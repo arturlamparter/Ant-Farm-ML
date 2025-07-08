@@ -5,12 +5,11 @@ Simulation einer Ameise
 Dieses Modul startet die Hauptanwendung für eine Ameisen-Simulation mit grafischer Benutzeroberfläche.
 Die Anwendung folgt dem MVC-Prinzip (Model-View-Controller) und dient als Lernprojekt für künstliche Intelligenz.
 
-Version:     0.2.0
 Autor:       Artur Lamparter <arturlamparter@web.de>
 Projektziel: Demonstration KI-gesteuerter Agenten im simulierten Umfeld
 """
 __author__ = "Artur Lamparter <arturlamparter@web.de>"
-__version__ = "0.2.0" #git tag v0.2.0
+__version__ = "0.2.1" #git tag v0.2.1
 
 # --- Externe Modulintegration ---
 import sys

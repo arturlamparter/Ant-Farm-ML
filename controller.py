@@ -175,7 +175,7 @@ class TkSettingsController:                                             # HauptC
         # self.world.foods.set_food = 1                               # Anzahl der Essens Objekte setzen
         # self.world.foods.generate_food(self.world.foods.set_food)   # Generiere essen
         # self.world.ants.generate_ant(1, ant_strategy="brain", ant_machine_learning="Q-Learning")      # Einen mit Brain
-        self.tk_view.update_log_collector_text("Hier Werden die Internen Daten, der Ameise angezeigt.")
+        self.tk_view.update_log_widget_text("Hier Werden die Internen Daten, der Ameise angezeigt.")
 
 
         # Konfiguration der Tk Elemente
@@ -183,7 +183,7 @@ class TkSettingsController:                                             # HauptC
         self.tk_view.update_ent_ant_add(1)  # Setze Ant Entry
 
         self.tk_view.update_cmb_ant_machine_learning(self.machine_learning_methods, self.world.ant_machine_learning)
-        self.tk_view.update_cmb_selected_ant("001","001")
+        self.tk_view.update_cmb_selected_ant(["001"],"001")
 
         self.update_settings_window()       # Aktualisiere Labels
         self.world.update_odor_world()      # Setze Geruch
@@ -209,13 +209,13 @@ class TkSettingsController:                                             # HauptC
         """
         self.world.ants.generate_ants(int(self.tk_view.get_ent_ant_add_value()), self.ant_strategy, self.ant_machine_learning)
         if len(self.world.ants.show_ants()) > 0:            # Wenn Ameisen vorhanden sind
-            self.btn_selected_ant_set()                     # Speicher den ausgewählten Wert
+            # self.btn_selected_ant_set()                     # Speicher den ausgewählten Wert
             self.tk_view.update_cmb_selected_ant([ant.name for ant in self.world.ants], self.ant_ant_selected) # Aktualisiere Combobox
-            self.tk_view.update_log_collector_text(self.world.ants.show_ants()[int(self.ant_ant_selected)-1].log_collector.get_formatted_info())
+            # self.tk_view.update_log_widget_text(self.world.ants.show_ants()[int(self.ant_ant_selected) - 1].log_collector.get_formatted_info())
         self.tk_view.update_ent_ant_add(0)                              # Setze Ant Entry auf Null
         self.update_settings_window()
         for ant in self.world.ants.show_ants():                         # Hier wird der Callback für Textfeld gesetzt
-            ant.update_log_collector_callback(self.update_log_collector_text)
+            ant.log_collector.update_log_collector_callback(self.update_log_collector_text)
 
     def set_btn_food(self):
         """
@@ -299,7 +299,7 @@ class TkSettingsController:                                             # HauptC
         self.tk_view.update_ent_set_food(0)     # Setze Food entry auf Null
         self.world.foods.clear()                # Lösche alle Foods
         self.set_btn_food()                     # Aktualisiere Foods
-        self.tk_view.update_cmb_selected_ant(["None"], "None")
+        self.tk_view.update_cmb_selected_ant(["001"],"001")
         self.world.world_pause = False          # Starte wieder
 
     def btn_brain(self):
@@ -362,8 +362,14 @@ class TkSettingsController:                                             # HauptC
         Aktualisiert den Text des Text Widget im tk_view
         Funktioniert über Callback
         """
-        text = self.world.ants.show_ants()[int(self.ant_ant_selected) - 1].log_collector.get_formatted_info()
-        self.tk_view.update_log_collector_text(text)
+        if self.ant_ant_selected == "None": # Wenn keine Ameisen vorhanden sind
+            text = "!!!Keine Ameise ausgewählt!!!"
+            self.tk_view.update_log_widget_text(text)
+        else:
+            text = self.world.ants.show_ants()[int(self.ant_ant_selected) - 1].log_collector.get_formatted_info()
+            self.tk_view.update_log_widget_text(text)
+
+
 
 # === Testpoint ===
 if __name__ == "__main__":

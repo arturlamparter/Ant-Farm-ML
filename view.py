@@ -393,9 +393,9 @@ class TkSettingsWindow(tk.Tk):
         """Setzt den Text des Labels für allgemeine Machine-Learning-Ausgabe."""
         self.lbl_machine_learning.config(text=text)
 
-    def update_log_collector_text(self, text):
+    def update_log_widget_text(self, text):
         """Setzt den Text des Text Widged für allgemeine Informationen der Ameise."""
-        self.text_widget.config(state="normal")
+        self.text_widget.config(state="normal") # Sonst wird nichts angezeigt !!!Wird noch geklärt!!!
         self.text_widget.delete("1.0", "end")
         self.text_widget.insert("1.0", text)
         self.text_widget.config(state="disabled")

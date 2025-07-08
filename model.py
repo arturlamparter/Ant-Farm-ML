@@ -146,7 +146,6 @@ class Ant:
             print("Fehler beim Gehirn übergabe")        # Fehler
         self.log_collector = LogCollector(self.name, self.brain.ant_strategy, self.brain.ant_machine_learning)
         self.brain.log_collector = self.log_collector
-        self.update_log_collector = None
 
     def get_position(self):                          # Ant Position
         """
@@ -285,7 +284,6 @@ class Ant:
         self.log_collector.add_log_txt(f"!!!Bewegung!!!\n"
             f"Neuer Positionsgeruch:{self.odor}, Berechneter Nexter State:{next_state}\n"
             f" Anfrage Q-Value:{q_value}, Belohnung:{reward} neuer Geruch:{self.odor}\n")
-        self.update_log_collector()
         self.log_collector.add_new_period()
 
     def move_brain_monte_carlo(self) -> None: # print(f"{}")
@@ -340,7 +338,6 @@ class Ant:
                 return                                                      # Datensatz schon geschrieben, Raus
         self.brain.episode.append((state, action, reward))                  # Schreibe den Datensatz in episode
         self.log_collector.add_log_txt(f"Merke in Episode:{(state, action, reward)}\n")
-        self.update_log_collector()
         self.log_collector.add_new_period()
 
     def move_odor(self) -> None:  # Kombination aus Zufall und "Geruch folgen" Strategie
@@ -365,7 +362,6 @@ class Ant:
             f"Berechnete Richtungen:{new_directions} Gewählte Richtung:{action}\n"
             f"------------------------------------------------------------------------------------------\n")
         self.move_direction(action)
-        self.update_log_collector()
         self.log_collector.add_new_period()
 
     def move_random(self) -> None: # Zufällig immer eine Position springen
@@ -377,14 +373,7 @@ class Ant:
         """
         self.log_collector.add_log_txt(f"Position: X:{self.pos_x}, Y:{self.pos_y}, Energie:{self.orka}, Futtergefunden:{self.food_found}\n")
         self.move_direction(random.choice(self.directions))
-        self.update_log_collector()
         self.log_collector.add_new_period()
-
-    def update_log_collector_callback(self, callback):
-        """
-        Callback vom Controller um das Text Widget zu aktualisieren
-        """
-        self.update_log_collector = callback
 
 class Ants:
     """
@@ -620,13 +609,12 @@ class LogCollector:
             ant_strategy (str): Verwendete Strategie der Ameise.
             ant_machine_learning (str): Lernmethode der Ameise.
         """
-        # self.ant = ant
         self.name = name
         self.ant_strategy =  ant_strategy
         self.ant_machine_learning = ant_machine_learning
         self._periods = [f"Ameise:{name}, Strategie: {ant_strategy}, Lernmethode:{ant_machine_learning}\n"]
         self.period = 0
-        self.add_new_period()
+        self.update_log_text_widget = None
 
     def add_log_txt(self, text):
         """
@@ -643,6 +631,7 @@ class LogCollector:
         Dabei wird der Periodenzähler erhöht und eine neue Textperiode mit
         Kopfzeile für die Ameise, Strategie und Lernmethode angelegt.
         """
+        self.update_log_text_widget()
         self.period += 1
         self._periods.append(self.PERIOD_SEPARATOR + f"Ant:{self.name}, Strategie: {self.ant_strategy}, Lernmethode:{self.ant_machine_learning}, Step: {self.period}\n")
 
@@ -652,7 +641,7 @@ class LogCollector:
         Returns:
             str: Logtext der aktuellen Periode.
         """
-        return self._periods[self.period]
+        return self._periods[self.period-1]
 
     def get_all_periods(self):
         """
@@ -661,6 +650,12 @@ class LogCollector:
             str: Kombinierter Logtext aller Perioden.
         """
         return "".join(self._periods)
+
+    def update_log_collector_callback(self, callback):
+        """
+        Callback vom Controller um das Text Widget zu aktualisieren
+        """
+        self.update_log_text_widget = callback
 
 class DataStorage:
     """
