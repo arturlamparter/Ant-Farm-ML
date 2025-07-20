@@ -11,9 +11,65 @@ Brain v0.7
 import pandas as pd
 import numpy as np
 import random
+import json
+import logging
 
-import config
 import main
+
+# Logger configuration
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+# Load JSON-Konfiguration
+CONFIG_FILE = "config.json"
+with open(CONFIG_FILE, "r", encoding="utf-8") as file:
+    config =  json.load(file)  # Dictionary
+TEST = config.get('TEST', True)
+# --- Test order ---
+if TEST:
+    logger.setLevel(logging.DEBUG)            # Logger verarbeitet alles ab DEBUG
+else:
+    logger.setLevel(logging.INFO)            # Standard-Level
+
+""" --- Merker ---
+logger.debug("Debug-Meldung")
+logger.info("Info-Meldung")
+logger.warning("Warnung")
+logger.error("Fehler")
+logger.critical("Kritischer Fehler")
+"""
+
+GRID_SIZE = config.get('GRID_SIZE', 10)
+GRID_WIDTH = config.get('GRID_WIDTH', 100)                              # X (spalte)
+GRID_HEIGHT = config.get('GRID_HEIGHT', 100)                            # Y (zeile)
+ANT_STRATEGY = config.get('ANT_STRATEGY', "random")                     # Food suche Strategie
+ANT_MACHINE_LEARNING = config.get('ANT_MACHINE_LEARNING', None)         # Bestimte brain Methode
+MONTE_CARLO_FILE = config.get('MONTE_CARLO_FILE', "Monte-Carlo-Methode.csv")
+Q_LEARNING_FILE = config.get('Q_LEARNING_FILE', "Q-Learning.csv")
+RANDOM_COLOR = config.get('RANDOM_COLOR', "RED")
+ODOR_COLOR = config.get('ODOR_COLOR', "BLUE")
+MONTE_CARLO_COLOR = config.get('MONTE_CARLO_COLOR', "YELLOW")
+Q_LEARNING_COLOR = config.get('Q_LEARNING_COLOR', "ORANGE")
+ORKA = config.get('ORKA', 1000)
+FOOD_RANDOM_COLOR = config.get('FOOD_RANDOM_COLOR', "GREEN")
+FOOD_FIXED_SIZE_COLOR = config.get('FOOD_FIXED_SIZE_COLOR', "GREEN")
+FOOD_RANGE =  config.get('FOOD_RANGE', 100)
+RANDOM_FOOD = config.get('RANDOM_FOOD', 0)
+DIRECTIONS = ['up', 'down', 'left', 'right']
+COLORS = ["RED", "BLUE", "YELLOW", "ORANGE", "PURPLE", "CYAN", "PINK", "GRAY", "WHITE", "GREEN", "BLACK"]
+
+""" --- Colors ---
+WHITE = (255, 255, 255)
+GREEN = (0, 255, 0)
+BLACK = (0, 0, 0)
+RED = (255, 0, 0)
+BLUE = (0, 0, 255)
+YELLOW = (255, 255, 0)
+ORANGE = (255, 165, 0)
+PURPLE = (128, 0, 128)
+CYAN = (0, 255, 255)
+PINK = (255, 105, 180)
+GRAY = (128, 128, 128)
+"""
 
 class Brain: # Hier werden Die daten als auch die Methoden für ML bereitgestellt
     """
@@ -56,9 +112,9 @@ class Brain: # Hier werden Die daten als auch die Methoden für ML bereitgestell
     def load_data_from_csv(self, ant_machine_learning):
         """Die Auswahl welche CSV geladen werden soll."""
         if ant_machine_learning == "Monte-Carlo":
-            self._q = DataStorage().load_brain_data(config.MONTE_CARLO_FILE)
+            self._q = DataStorage().load_brain_data(MONTE_CARLO_FILE)
         elif ant_machine_learning == "Q-Learning":
-            self._q = DataStorage().load_brain_data(config.Q_LEARNING_FILE)
+            self._q = DataStorage().load_brain_data(Q_LEARNING_FILE)
         else:
             print("ant_machine_learning nicht Vorhanden")
 
@@ -131,8 +187,9 @@ class Ant:
         self.world = world                              # Enthält alle Weltobjekte (Matrix)
         self.pos_x = pos_x
         self.pos_y = pos_y
-        self.orka = 1000                                # Energie /  Schritte
-        self.directions = config.DIRECTIONS             # Später Integrieren
+        self.orka = int(ORKA)                                # Energie /  Schritte
+        self.out_of_action = False
+        self.directions = DIRECTIONS             # Später Integrieren
         self.last_direction = 'XXX'                     # Alte Richtungsanzeige
         self.last_last_direction = 'XXX'                # Alte Richtungsanzeige x 2
         self.odor = 100                                 # Geruchsstärke
@@ -143,7 +200,8 @@ class Ant:
         if brain and isinstance(brain, Brain):          # Wenn Brain korrekt übergeben wird
             self.brain = brain # Enthält das Objekt     # Setzen
         else:
-            print("Fehler beim Gehirn übergabe")        # Fehler
+            logger.critical("Fehler beim Gehirn übergabe")        # Fehler
+        self.color = self.set_color()
         self.log_collector = LogCollector(self.name, self.brain.ant_strategy, self.brain.ant_machine_learning)
         self.brain.log_collector = self.log_collector
 
@@ -155,6 +213,14 @@ class Ant:
             Tuple[int, int]: Die aktuelle Koordinate der Ameise (pos_x, pos_y).
         """
         return self.pos_x, self.pos_y
+
+    def set_color(self):
+        if self.brain.ant_strategy == "random": return RANDOM_COLOR
+        if self.brain.ant_strategy == "odor": return ODOR_COLOR
+        if self.brain.ant_strategy == "brain":
+            if self.brain.ant_machine_learning == "Monte-Carlo": return MONTE_CARLO_COLOR
+            if self.brain.ant_machine_learning == "Q-Learning": return Q_LEARNING_COLOR
+        return (0, 0, 0)
 
     def get_position_turned(self):                      # Position gedreht
         """
@@ -179,14 +245,14 @@ class Ant:
         """
         if pos_x < 0:                                   # Bim Bereich verlassen
             self.pos_x = 99                             # Entgegengesetzter Seite rein
-        elif pos_x >= config.GRID_WIDTH:
+        elif pos_x >= GRID_WIDTH:
             self.pos_x = 0
         else:
             self.pos_x = pos_x
 
         if pos_y < 0:
             self.pos_y = 99
-        elif pos_y >= config.GRID_WIDTH:
+        elif pos_y >= GRID_WIDTH:
             self.pos_y = 0
         else:
             self.pos_y = pos_y
@@ -371,8 +437,8 @@ class Ant:
 
         Diese Methode ignoriert Geruch, Strategie oder andere Faktoren.
         """
-        self.log_collector.add_log_txt(f"Position: X:{self.pos_x}, Y:{self.pos_y}, Energie:{self.orka}, Futtergefunden:{self.food_found}\n")
         self.move_direction(random.choice(self.directions))
+        self.log_collector.add_log_txt(f"Position: X:{self.pos_x}, Y:{self.pos_y}, Energie:{self.orka}, Futtergefunden:{self.food_found}\n")
         self.log_collector.add_new_period()
 
 class Ants:
@@ -425,8 +491,8 @@ class Ants:
         :param ant_machine_learning: Optional, bei Strategie 'brain': ML-Methode ('Monte-Carlo', 'Q-Learning').
         """
         for i in range(crowd):
-            pos_x = random.randint(2, config.GRID_WIDTH - 2)
-            pos_y = random.randint(2, config.GRID_HEIGHT - 2)
+            pos_x = random.randint(2, GRID_WIDTH - 2)
+            pos_y = random.randint(2, GRID_HEIGHT - 2)
             if ant_strategy == "brain":
                 brain = Brain(name="BrainXX", ant_strategy=ant_strategy, ant_machine_learning=ant_machine_learning)
                 self._ants.append(Ant(self.world, pos_x, pos_y, brain, name=str(len(self.world.ants) + 1).zfill(3)))
@@ -446,7 +512,7 @@ class Food:
     """
     Repräsentiert eine Futterquelle mit Position, Kalorienwert und Namen.
     """
-    def __init__(self, pos_x: int, pos_y: int, calories: int = 10, name: str = "Zucker") -> None:
+    def __init__(self, pos_x: int, pos_y: int, calories: int = 10, name: str = "Zucker", color=FOOD_FIXED_SIZE_COLOR) -> None:
         """
         Initialisiert das Futterobjekt.
 
@@ -459,6 +525,7 @@ class Food:
         self.pos_x = pos_x
         self.pos_y = pos_y
         self.calories = calories
+        self.color = color
 
     def get_position(self):                 # Gebe die Position vom Futter zurück
         """
@@ -472,8 +539,8 @@ class Food:
         """
         Setzt eine neue zufällige Position für das Futter innerhalb der erlaubten Weltgrenzen.
         """
-        self.pos_x = random.randint(2, config.GRID_WIDTH - 2)
-        self.pos_y = random.randint(2, config.GRID_HEIGHT - 2)
+        self.pos_x = random.randint(2, GRID_WIDTH - 2)
+        self.pos_y = random.randint(2, GRID_HEIGHT - 2)
 
 class Foods:
     """
@@ -518,12 +585,12 @@ class Foods:
         """
         self._foods.clear()
 
-    def generate_food(self, crowd: int = 1):
+    def generate_food(self, crowd=1):
         """
         Erzeugt mehrere Food-Objekte an zufälligen Positionen.
         """
         for _ in range(crowd): #random.randint(5, 100)
-            self._foods.append(Food(random.randint(2, config.GRID_WIDTH - 2), random.randint(2, config.GRID_HEIGHT - 2), 120))
+            self._foods.append(Food(random.randint(2, GRID_WIDTH - 2), random.randint(2, GRID_HEIGHT - 2), int(FOOD_RANGE)))
         self.set_food = len(self._foods)
 
     def show_foods(self):
@@ -542,6 +609,12 @@ class World:
         Initialisiert die Welt, Ameisen, Futter und das Geruchsfeld.
         """
         self.world_array = []
+        self.grid_size = GRID_SIZE
+        self.grid_width = GRID_WIDTH
+        self.grid_height = GRID_HEIGHT
+        self.screen_width = self.grid_width * self.grid_size
+        self.screen_height = self.grid_height * self.grid_size
+
         self.clock_tick = 1
         self.world_pause = False
         self.ants = Ants(self)
@@ -552,7 +625,7 @@ class World:
         """
         Aktualisiert das Geruchsfeld basierend auf aktuellem Futter.
         """
-        self.world_array = np.zeros((config.GRID_HEIGHT, config.GRID_WIDTH), dtype=int) # Erzeuge Feld
+        self.world_array = np.zeros((GRID_HEIGHT, GRID_WIDTH), dtype=int) # Erzeuge Feld
         yy, xx = np.indices(self.world_array.shape)  # erstellt zwei Arrays die die Koordinaten (Indices) aller Zellen im world_array enthalten
         for food in self.foods.show_foods():
             self.calculate_odor_field(food, yy, xx)             # Berechne Geruchsausbreitung
@@ -577,10 +650,13 @@ class World:
         """
         Gibt die Geruchsstärke an Position (x,y) zurück.
         """
-        if 0 <= x < config.GRID_WIDTH and 0 <= y < config.GRID_HEIGHT:
+        if 0 <= x < GRID_WIDTH and 0 <= y < GRID_HEIGHT:
             return self.world_array[y, x]   # Normalrückgabe
         return 0            # Geruch auserhalb des Array auf 0 Setzen, fehler ausschließen
         # print(f"Auserhalb des bereichs: Pos: {x}, Pos: {y}")
+
+    def get_screen_color(self):
+        return "WHITE"
 
 class LogCollector:
     """
@@ -641,7 +717,7 @@ class LogCollector:
         Returns:
             str: Logtext der aktuellen Periode.
         """
-        return self._periods[self.period-1]
+        return self._periods[self.period-1]     # -1 Muss bleiben. !!!Wichtig!!!
 
     def get_all_periods(self):
         """
@@ -726,6 +802,39 @@ class DataStorage:
         except (FileNotFoundError, pd.errors.EmptyDataError) as e:
             print(f"Fehler beim Lesen der CSV-Datei: {e}")
             return pd.DataFrame()  # Gibt ein leeres DataFrame zurück als "Fallback"
+
+    def save_settings(self, settings):
+        if not isinstance(settings, dict):
+            logger.error("Übergebene Daten sind nicht im Dictionary-Format.")
+            return
+
+        config_data = self.load_json_file(CONFIG_FILE)
+        for key, value in settings.items():         # Iteriere über Schlüssel-Wert-Paare
+            config_data[key] = value                # Aktualisiere den Wert im config_data
+
+        self.save_json_file(CONFIG_FILE, config_data)
+
+    def load_json_file(self, file):
+        try:
+            with open(file, 'r') as json_file:
+                return json.load(json_file)  # Lade den bestehenden Inhalt
+        except FileNotFoundError:
+            logger.error("Datei nicht vorhanden.")
+            return None
+        except json.JSONDecodeError:
+            logger.error("Fehler beim Parsen der JSON-Datei. Die Datei könnte beschädigt sein.")
+            return None
+        except Exception as e:
+            logger.error(f"Unbekannter Fehler: {e}")
+            return None
+
+    def save_json_file(self, file, dict_data):
+        try:
+            with open(file, 'w') as json_file:
+                json.dump(dict_data, json_file, indent=4)
+            logger.info("Einstellungen erfolgreich gespeichert.")
+        except Exception as e:
+            logger.error(f"Fehler beim Speichern der Datei: {e}")
 
 # === Testpoint ===
 if __name__ == "__main__":

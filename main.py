@@ -9,14 +9,13 @@ Autor:       Artur Lamparter <arturlamparter@web.de>
 Projektziel: Demonstration KI-gesteuerter Agenten im simulierten Umfeld
 """
 __author__ = "Artur Lamparter <arturlamparter@web.de>"
-__version__ = "0.2.1" #git tag v0.2.1
+__version__ = "0.2.2" #git tag v0.2.2
 
 # --- Externe Modulintegration ---
 import sys
 
 import view         # Enthält die GUI-Elemente (Tkinter-Views)
 import controller   # Steuert die Verbindung zwischen Model und View (Eventhandling etc.)
-import model        # Repräsentiert die Datenstruktur der Welt (z.B. die Matrix der Ameise)
 
 
 def main() -> None:
@@ -29,14 +28,11 @@ def main() -> None:
     - Startet die Tkinter Hauptschleife
     """
 
-    # Initialisiere Weltobjekt mit Matrixdaten und Simulationslogik
-    world_obj = model.World()
-
     # Erzeuge das GUI-Hauptfenster mit Steuerelementen
     tk_settings_view_obj = view.TkSettingsWindow()
 
     # Koppele das Modell und die View über einen Controller (Ist nur für Tk zuständig)
-    controller.TkSettingsController(world_obj, tk_settings_view_obj)
+    controller.TkSettingsController(tk_settings_view_obj)
 
     # Starte die GUI (muss im Hauptthread laufen)
     tk_settings_view_obj.mainloop()

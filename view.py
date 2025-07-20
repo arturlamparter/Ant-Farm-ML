@@ -16,9 +16,9 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 
-import config
 import main
 import model
+
 
 class PyGameWindow:
     """
@@ -27,31 +27,34 @@ class PyGameWindow:
     Dieses Fenster visualisiert die Positionen der Ameisen und der Nahrung auf einem Gitter.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, world) -> None:
         """
         Initialisiert das Pygame-Fenster mit voreingestellter Größe und Titel.
         """
-        self.screen = pygame.display.set_mode((config.SCREEN_WIDTH, config.SCREEN_HEIGHT))  # Fenstergröße variabel laut config
+        self.world = world
+        self.screen = pygame.display.set_mode((self.world.screen_width, self.world.screen_height))  # Fenstergröße variabel laut config
         pygame.display.set_caption("Lernende Ameise")  # Fenstertitel setzen
 
-    def render(self, world: model.World()) -> None:
+    def render(self) -> None:
         """
         Zeichnet die aktuelle Welt in das Pygame-Fenster.
 
         Args:
             world: Ein Objekt, das die aktuellen Zustände von Ameisen und Nahrung enthält.
         """
-        self.screen.fill(config.WHITE)  # Bildschirm mit Hintergrundfarbe füllen
+        self.screen.fill(self.world.get_screen_color())  # Bildschirm mit Hintergrundfarbe füllen
 
         # Nahrung zeichnen
-        for f in world.foods:
+        for f in self.world.foods:
             fx, fy = f.get_position()  # Koordinaten abrufen
-            self.draw_square(config.GREEN, fx, fy)  # Nahrung als grünes Quadrat
+            color = f.color
+            self.draw_square(color, fx, fy)  # Nahrung als grünes Quadrat
 
         # Ameisen zeichnen
-        for a in world.ants:
+        for a in self.world.ants:
             ax, ay = a.get_position()  # Koordinaten abrufen
-            self.draw_square(config.RED, ax, ay)  # Ameise als rotes Quadrat
+            color = a.color
+            self.draw_square(color, ax, ay)  # Ameise als buntes Quadrat
 
         pygame.display.flip()  # Zeichne den neuen Frame auf den Bildschirm
 
@@ -60,15 +63,15 @@ class PyGameWindow:
         Zeichnet ein farbiges Quadrat an der gegebenen Position auf dem Grid.
 
         Args:
-            color: Die Farbe als RGB-Tupel (z.B. config.RED).
+            color: Die Farbe als RGB-Tupel (z.B. model.RED).
             x (int): Die x-Koordinate im Gitter.
             y (int): Die y-Koordinate im Gitter.
         """
         rect = (
-            x * config.GRID_SIZE,   # x-Position in Pixel
-            y * config.GRID_SIZE,   # y-Position in Pixel
-            config.GRID_SIZE,       # Breite
-            config.GRID_SIZE        # Höhe
+            x * self.world.grid_size,   # x-Position in Pixel
+            y * self.world.grid_size,   # y-Position in Pixel
+            self.world.grid_size,       # Breite
+            self.world.grid_size        # Höhe
         )
         pygame.draw.rect(self.screen, color, rect)
 
@@ -135,8 +138,8 @@ class TkSettingsWindow(tk.Tk):
         self.lbl_ant_var_show = tk.Label(self, textvariable=self.ants_var, anchor="center", font=("Arial", 14))
         self.lbl_ant_var_show.grid(row=4, column=1, padx=5, sticky="nsew")  # Anzahl der Ameisen unterwegs
 
-        btn = tk.Button(self, text="EDIT")                  # Einstellungsmöglichkeiten für Ant (nicht Implementiert)
-        btn.grid(row=4, column=2, columnspan=1, padx=5)
+        self.btn_ant_settings = tk.Button(self, text="EDIT")                # Einstellungsmöglichkeiten für Ant
+        self.btn_ant_settings.grid(row=4, column=2, columnspan=1, padx=5)
 
         self.ent_ant_add = tk.Entry(self, width=7, justify='center')       # Eingabe Ameisenanzahl
         self.ent_ant_add.grid(row=4, column=3, columnspan=1, padx=5)
@@ -153,8 +156,8 @@ class TkSettingsWindow(tk.Tk):
         self.lbl_food_var_show = tk.Label(self, textvariable=self.food_var, anchor="center", font=("Arial", 14))
         self.lbl_food_var_show.grid(row=6, column=1, padx=5, sticky="nsew") # Anzahl der eingestellten Futterelementen
 
-        btn = tk.Button(self, text="EDIT")                  # Einstellungsmöglichkeiten für Food (nicht Implementiert)
-        btn.grid(row=6, column=2, columnspan=1, padx=5)
+        self.btn_food_settings = tk.Button(self, text="EDIT")               # Einstellungsmöglichkeiten für Food
+        self.btn_food_settings.grid(row=6, column=2, columnspan=1, padx=5)
 
         self.ent_food = tk.Entry(self, width=7, justify='center') # Eingabemöglichkeit für Futterelementenanzahl
         self.ent_food.grid(row=6, column=3, columnspan=1, padx=5)
@@ -277,9 +280,15 @@ class TkSettingsWindow(tk.Tk):
         """Setzt den Callback für den 'Set >'-Button (Geschwindigkeit)."""
         self.btn_set_speed.config(command=callback)
 
+    def set_btn_ant_settings_cb(self, cb):
+        self.btn_ant_settings.config(command=cb)
+
     def set_ant_add_callback(self, callback):
         """Setzt den Callback für den 'Add >'-Button (Ameisen)."""
         self.btn_ant_add.config(command=callback)
+
+    def set_btn_food_settings_cb(self, cb):
+        self.btn_food_settings.config(command=cb)
 
     def set_food_callback(self, callback):
         """Setzt den Callback für den 'Set >'-Button (Futter)."""
@@ -399,6 +408,121 @@ class TkSettingsWindow(tk.Tk):
         self.text_widget.delete("1.0", "end")
         self.text_widget.insert("1.0", text)
         self.text_widget.config(state="disabled")
+
+class AntSettingsWindow(tk.Toplevel):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.name = "Ant Settings"
+        self.title(self.name)
+        self.geometry("400x320")
+        self.colors = model.COLORS
+        self.chk_btn_var = tk.IntVar(value=0)  # Checkbox state (0 = off, 1 = on)
+
+        ttk.Label(self, text="Ant Color", font=("Arial", 16)).grid(row=0, column=0, columnspan=10, padx=10)
+        ttk.Label(self, text="Random:", font=("Arial", 14)).grid(row=2, column=0, padx=10)
+
+        self.cmb_random = ttk.Combobox(self, values=self.colors)
+        self.cmb_random.grid(row=2, column=2, padx=10)
+
+        ttk.Label(self, text="Odor:", font=("Arial", 14)).grid(row=3, column=0, padx=10)
+        self.cmb_odor = ttk.Combobox(self, values=self.colors)
+        self.cmb_odor.grid(row=3, column=2, padx=10)
+
+        ttk.Label(self, text="Monte-Carlo-Methode:", font=("Arial", 14)).grid(row=4, column=0, padx=10)
+        self.cmb_monte_carlo = ttk.Combobox(self, values=self.colors)
+        self.cmb_monte_carlo.grid(row=4, column=2, padx=10)
+
+        ttk.Label(self, text="Q-Learning:", font=("Arial", 14)).grid(row=5, column=0, padx=10)
+        self.cmb_q_learning = ttk.Combobox(self, values=self.colors)
+        self.cmb_q_learning.grid(row=5, column=2, padx=10)
+
+        ttk.Label(self, text="", font=("Arial", 16)).grid(row=6, column=0, columnspan=10, padx=10)
+        ttk.Label(self, text="Allgemeine Einstellungen", font=("Arial", 16)).grid(row=7, column=0, columnspan=10, padx=10)
+        ttk.Label(self, text="Energie:", font=("Arial", 14)).grid(row=8, column=0, padx=10)
+        self.ent = tk.Entry(self)
+        self.ent.grid(row=8, column=2, padx=10)
+
+        ttk.Label(self, text="Bei 0 entfernen:", font=("Arial", 14)).grid(row=9, column=0, padx=10)
+        self.chk_btn_generationen = tk.Checkbutton(self, text="Generationen", variable=self.chk_btn_var)
+        self.chk_btn_generationen.grid(row=9, column=2)
+
+        ttk.Label(self, text="", font=("Arial", 16)).grid(row=10, column=0, columnspan=10, padx=10)
+        ttk.Label(self, text="!!! Nach änderung muss die App neugestartet werden !!!", font=("Arial", 11)).grid(row=11, column=0, columnspan=10, padx=10)
+        self.btn_save = ttk.Button(self, text="Save", padding=10)
+        self.btn_save.grid(row=12, column=0, padx=10)
+        ttk.Button(self, text="Exit", command=self.destroy, padding=10).grid(row=12, column=2, padx=10)
+
+    def update_settings(self, settings):
+        self.cmb_random.set(settings["RANDOM_COLOR"])
+        self.cmb_odor.set(settings["ODOR_COLOR"])
+        self.cmb_monte_carlo.set(settings["MONTE_CARLO_COLOR"])
+        self.cmb_q_learning.set(settings["Q_LEARNING_COLOR"])
+        self.ent.insert(0, settings["ORKA"])
+        self.chk_btn_var.set(value=settings["GENERATION"])
+
+    def set_btn_save_cb(self, cb):
+        self.btn_save.config(command=cb)
+
+    def get_settings(self):
+        settings = {"RANDOM_COLOR": self.cmb_random.get(),
+                    "ODOR_COLOR": self.cmb_odor.get(),
+                    "MONTE_CARLO_COLOR": self.cmb_monte_carlo.get(),
+                    "Q_LEARNING_COLOR": self.cmb_q_learning.get(),
+                    "ORKA": self.ent.get(),
+                    "GENERATION": self.chk_btn_var.get()}
+        return settings
+
+class FoodSettingsWindow(tk.Toplevel):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.name = "Food Settings"
+        self.title(self.name)
+        self.geometry("400x320")
+        self.colors = model.COLORS
+        self.chk_btn_var = tk.IntVar(value=0)  # Checkbox state (0 = off, 1 = on)
+
+        ttk.Label(self, text="Food Color", font=("Arial", 16)).grid(row=0, column=0, columnspan=10, padx=10)
+        ttk.Label(self, text="Random Food:", font=("Arial", 14)).grid(row=2, column=0, padx=10)
+
+        self.cmb_random = ttk.Combobox(self, values=self.colors)
+        self.cmb_random.grid(row=2, column=2, padx=10)
+
+        ttk.Label(self, text="Feste größe:", font=("Arial", 14)).grid(row=3, column=0, padx=10)
+        self.cmb_fixed_size = ttk.Combobox(self, values=self.colors)
+        self.cmb_fixed_size.grid(row=3, column=2, padx=10)
+
+        ttk.Label(self, text="", font=("Arial", 16)).grid(row=6, column=0, columnspan=10, padx=10)
+        ttk.Label(self, text="Allgemeine Einstellungen", font=("Arial", 16)).grid(row=7, column=0, columnspan=10,
+                                                                                  padx=10)
+        ttk.Label(self, text="Food range:", font=("Arial", 14)).grid(row=8, column=0, padx=10)
+        self.ent = tk.Entry(self)
+        self.ent.grid(row=8, column=2, padx=10)
+
+        ttk.Label(self, text="Random Food", font=("Arial", 14)).grid(row=9, column=0, padx=10)
+        self.chk_btn_random_food = tk.Checkbutton(self, text="", variable=self.chk_btn_var)
+        self.chk_btn_random_food.grid(row=9, column=2)
+
+        ttk.Label(self, text="", font=("Arial", 16)).grid(row=10, column=0, columnspan=10, padx=10)
+        ttk.Label(self, text="", font=("Arial", 11)).grid(row=11, column=0, columnspan=10, padx=10)
+        self.btn_save = ttk.Button(self, text="Save", padding=10)
+        self.btn_save.grid(row=12, column=0, padx=10)
+        ttk.Button(self, text="Exit", command=self.destroy, padding=10).grid(row=12, column=2, padx=10)
+
+    def update_settings(self, settings):
+        self.cmb_random.set(settings["FOOD_RANDOM_COLOR"])
+        self.cmb_fixed_size.set(settings["FOOD_FIXED_SIZE_COLOR"])
+        self.ent.insert(0, settings["FOOD_RANGE"])
+        self.chk_btn_var.set(value=settings["RANDOM_FOOD"])
+
+    def set_btn_save_cb(self, cb):
+        self.btn_save.config(command=cb)
+
+    def get_settings(self):
+        settings = {"FOOD_RANDOM_COLOR": self.cmb_random.get(),
+                    "FOOD_FIXED_SIZE_COLOR": self.cmb_fixed_size.get(),
+                    "FOOD_RANGE": self.ent.get(),
+                    "RANDOM_FOOD": self.chk_btn_var.get()}
+        return settings
 
 class FoodOdorPyPlot:
     def __init__(self, world_array: np.ndarray) -> None:
