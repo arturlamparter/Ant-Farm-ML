@@ -86,17 +86,24 @@ class Brain: # Hier werden Die daten als auch die Methoden für ML bereitgestell
         self.name = name
         self._q = {}        # z.B. {(state, action): value}  (action = 'up', 'down', 'left', 'right')
         self.episode = []   # z.B. [state, action, reward] z.B. [((-1, +1, 0, -1), 'down', -0.5)]
-        self.ant_strategy = ant_strategy                    # Unterschiedliche Food suche Strategien
-        self.ant_machine_learning = ant_machine_learning    # Bestimte brain Methode
+        self.ant_strategy = ant_strategy                    # Unterschiedliche Food suche Strategien ["random" ,"odor", "brain"]
+        self.ant_machine_learning = ant_machine_learning    # Bestimte brain Methode ["Monte-Carlo", "Q-Learning"]
         self.log_collector = None
         self.alpha = 0.1
         self.gamma = 0.9
 
         if data is None:
-            if self.ant_strategy == "brain":
-                self.load_data_from_csv(self.ant_machine_learning)
+            self.load_data_from_csv()
         else:
             self.set_brain(data) # Wenn vorhanden setze Werte
+
+        if self.ant_machine_learning == "Monte-Carlo":
+            self.csv_file = MONTE_CARLO_FILE
+        elif self.ant_machine_learning == "Q-Learning":
+            self.csv_file =  Q_LEARNING_FILE
+        else:
+            self.csv_file = None
+            # logger.error("Brain-Lernverfahren unbekannt.")
 
     def __str__(self):  # Zur identifizierung des Objekts
         return self.name
@@ -109,14 +116,20 @@ class Brain: # Hier werden Die daten als auch die Methoden für ML bereitgestell
         """Erlaubt Zugriff auf Q-Werte via brain[(state, action)]."""
         return self._q[index]
 
-    def load_data_from_csv(self, ant_machine_learning):
-        """Die Auswahl welche CSV geladen werden soll."""
-        if ant_machine_learning == "Monte-Carlo":
-            self._q = DataStorage().load_brain_data(MONTE_CARLO_FILE)
-        elif ant_machine_learning == "Q-Learning":
-            self._q = DataStorage().load_brain_data(Q_LEARNING_FILE)
+    def load_data_from_csv(self):
+        if self.ant_strategy == "brain":
+            if self.ant_machine_learning == "Monte-Carlo":
+                self._q = DataStorage().load_brain_data(MONTE_CARLO_FILE)
+            elif self.ant_machine_learning == "Q-Learning":
+                self._q = DataStorage().load_brain_data(Q_LEARNING_FILE)
+            else:
+                logger.error("Brain-Lernverfahren nicht gefunden.")
+
+    def save_data_to_csv(self):
+        if self.ant_strategy == "brain":
+            DataStorage.save_q_to_csv(self._q, self.csv_file)
         else:
-            print("ant_machine_learning nicht Vorhanden")
+            logger.info("Speichern ist nur bei Brain-Lernverfahren möglch")
 
     def set_brain(self, values):
             """Setzt die Q-Werte."""
@@ -124,18 +137,29 @@ class Brain: # Hier werden Die daten als auch die Methoden für ML bereitgestell
 
     def monte_carlo_calculate(self) -> None:
         """
-        Berechnet neue Q-Werte auf Basis einer vollständigen Episode
-        (von Endzustand rückwärts), gemäß Monte Carlo Methode.
+        Monte Carlo First-Visit Q-Wert-Aktualisierung auf Basis einer Episode.
         """
-        self.log_collector.add_log_txt(f"------Berechnung der Q-Werte für Monte carlo--------\n")
-        g = 0
-        for state, action, reward in reversed(self.episode):
-            g = reward + self.gamma * g     # zukünftige Belohnung
-            old_q = self._q.get((state, action), 0)
-            self._q[(state, action)] = old_q + self.alpha * (g - old_q)
-            self.log_collector.add_log_txt(f"Status:{state} - Richtung:{action} - Belohnung:{reward}\n"
-                                           f"Zukünftige Belohnung:{g:.2f}\n"
-                                           f"Bereits vorhandener Wert für Status und Richtung:{old_q:.2f}, Ersetzt durch: {self._q[(state, action)]:.2f}\n")
+        self.log_collector.add_log_txt(f"------Monte-Carlo-Q-Wert-Berechnung--------\n")
+        g = 0                               # zukünftige Belohnung
+        visited = set()  # speichert besuchte (state, action)
+
+        for i, (state, action, reward) in enumerate(reversed(self.episode)):
+            g = reward + self.gamma * g     # zukünftige Belohnung berechnen
+            key = (state, action)           # Dict Key
+
+            if key not in visited:          # First-visit check
+                visited.add(key)            # Merke bereits verarbeitete
+                old_q = self._q.get(key, 0) # Prognose berechnung
+                self._q[key] = old_q + self.alpha * (g - old_q)
+
+                self.log_collector.add_log_txt(
+                    f"[t={len(self.episode) - 1 - i}] Status:{state} Richtung:{action} "
+                    f"Belohnung:{reward} Zukünftige Belohnung:{g:.2f}\n"
+                    f"Vorhandener Q-Wert:{old_q:.2f} → Ersetzt durch:{self._q[key]:.2f} = Veränderung:{self._q[key] - old_q:.2f}\n"
+                )
+        self.episode.clear()
+        self.log_collector.add_log_txt(f"Episode geleert\n")
+        self.log_collector.add_new_period()
 
     def q_learning_calculate(self, state, action, reward, next_state):
         """
@@ -183,15 +207,17 @@ class Ant:
     zufällig, geruchsbasiert oder mittels Reinforcement Learning (Monte Carlo, Q-Learning).
     """
     def __init__(self, world, pos_x: int, pos_y: int, brain: Brain, name: str) -> None:
-        self.name = name
+        self.name = name                                # z. B. "001"
         self.world = world                              # Enthält alle Weltobjekte (Matrix)
         self.pos_x = pos_x
         self.pos_y = pos_y
-        self.orka = int(ORKA)                                # Energie /  Schritte
+        self.orka = int(ORKA)                           # Energie /  Schritte
         self.out_of_action = False
-        self.directions = DIRECTIONS             # Später Integrieren
+        self.directions = DIRECTIONS                    # Mögliche Richtungen
         self.last_direction = 'XXX'                     # Alte Richtungsanzeige
         self.last_last_direction = 'XXX'                # Alte Richtungsanzeige x 2
+        self.opposites = {'up': 'down', 'down': 'up', 'left': 'right', 'right': 'left'}
+        self.eps = 0.1                                  # Monte-Carlo ε-Soft Policy
         self.odor = 100                                 # Geruchsstärke
         self.odor_old = 0                               # Vorhergehender Geruch
         self.verkir = 0                                 # Schmerz/unwohlsein
@@ -285,18 +311,13 @@ class Ant:
             self.move_random()
         elif self.brain.ant_strategy == "odor":
             self.move_odor()
-        elif self.brain.ant_strategy == "brain":
-            self.move_brain()
-
-    def move_brain(self) -> None: # Auswahl ML Verfahren
-        """
-        Führt eine Bewegung anhand der im Brain definierten Lernmethode aus
-        (Monte-Carlo oder Q-Learning).
-        """
-        if self.brain.ant_machine_learning == "Monte-Carlo":
+        elif self.brain.ant_strategy == "brain" and self.brain.ant_machine_learning == "Monte-Carlo":
             self.move_brain_monte_carlo()
-        elif self.brain.ant_machine_learning == "Q-Learning":
+        elif self.brain.ant_strategy == "brain" and self.brain.ant_machine_learning == "Q-Learning":
             self.move_brain_q_learning()
+        else:
+            logger.critical(f"Keine korrekte move Methode übergeben. "
+                            f"Strategie:{self.brain.ant_strategy}, ML:{self.brain.ant_machine_learning}")
 
     def calculate_state(self): # Geruchsunterschiede als Zustand
         """
@@ -322,7 +343,10 @@ class Ant:
         q_max = max(q_value)
         new_directions = [d for q, d in zip(q_value, self.directions) if q == q_max]
         action = random.choice(new_directions)
-        self.log_collector.add_log_txt(f"Positionsgeruch:{self.odor}, Berechneter State:{state}, Anfrage Q-Value:{q_value}, Q-Max:{q_max},\n"
+        self.log_collector.add_log_txt(
+            f"Position: X: {self.pos_x}, Y: {self.pos_y}, Energie: {self.orka}, Futtergefunden: {self.food_found}\n"
+            f"------------------------------------------------------------------------------------------\n"
+            f"Positionsgeruch:{self.odor}, Berechneter State:{state}, Anfrage Q-Value:{q_value}, Q-Max:{q_max},\n"
             f" Mögliche Richtungen:{new_directions}, Bestimmt:{action}, letzte aktion:{self.last_direction}\n")
         # Rückwärtsgehen vermeiden
         opposites = {'up': 'down', 'down': 'up', 'left': 'right', 'right': 'left'}
@@ -363,20 +387,25 @@ class Ant:
         """
         state = self.calculate_state()                                                  # Aktueller Status
         q_value = [round(float(self.brain.get_q_value(state, d)), 1) for d in self.directions] # Liste von 4 Q Werten
-        q_max = max(q_value)                                                            # Höchster wert gewinnt
-        new_directions = [d for q, d in zip(q_value, self.directions) if q == q_max]    # Vier Richtungen durchgehen
-        action = random.choice(new_directions)                                          # Richtung Höchster wert merken
-        self.log_collector.add_log_txt(
-            f"Position: X: {self.pos_x}, Y: {self.pos_y}, Energie: {self.orka}, Futtergefunden: {self.food_found}\n"
-            f"------------------------------------------------------------------------------------------\n"
-            f"Geruchswahrnehmung Position: {self.odor}\n"
-            f"Oben: {state[0]}      Unten: {state[1]}       Links: {state[2]}       Rechts: {state[3]}\n"
-            f"Gefundene Erfahrungen im Brain:\n"
-            f"Oben: {q_value[0]}   Unten: {q_value[1]}     Links: {q_value[2]}     Rechts: {q_value[3]}\n"
-            f"Berechnete Richtungen: {new_directions} Gewählte Richtung: {action}\n"
-            f"Vorhergehende Richtungswahl: {self.last_direction} \n")
-        opposites = {'up': 'down', 'down': 'up', 'left': 'right', 'right': 'left'}
-        if opposites.get(action) == self.last_direction:                # zurück gehen verboten
+        if random.random() < self.eps:                      # Exploration: zufällige Richtung wählen
+            action = random.choice(self.directions)         # self.direction = ['up', 'down', 'left', 'right']
+            self.log_collector.add_log_txt(
+                f"Ereignis Zufällig gehen eingetrofen\n"
+                f"Vorhergehende Richtungswahl: {self.last_direction}, Neue Richtungswahl: {action}\n")
+        else:
+            q_max = max(q_value)                                                        # Höchster wert gewinnt
+            best_actions = [d for q, d in zip(q_value, self.directions) if q == q_max]  # Vier Richtungen durchgehen
+            action = random.choice(best_actions)                                        # Richtung Höchster wert merken
+            self.log_collector.add_log_txt(
+                f"Position: X: {self.pos_x}, Y: {self.pos_y}, Energie: {self.orka}, Futtergefunden: {self.food_found}\n"
+                f"------------------------------------------------------------------------------------------\n"
+                f"Geruchswahrnehmung Position: {self.odor}\n"
+                f"Oben: {state[0]}      Unten: {state[1]}       Links: {state[2]}       Rechts: {state[3]}\n"
+                f"Gefundene Erfahrungen im Brain:\n"
+                f"Oben: {q_value[0]}   Unten: {q_value[1]}     Links: {q_value[2]}     Rechts: {q_value[3]}\n"
+                f"Berechnete Richtungen: {best_actions} Gewählte Richtung: {action}\n"
+                f"Vorhergehende Richtungswahl: {self.last_direction} \n")
+        if self.opposites.get(action) == self.last_direction:           # zurück gehen verboten
             directions = self.directions.copy()                         # Richtungen kopieren
             del directions[directions.index(action)]                    # Zurück löschen
             action = random.choice(directions)                          # Richtung Zufällig ohne Zurück
@@ -384,12 +413,7 @@ class Ant:
                 f"Ereignis Zurück gehen eingetrofen\n"
                 f"Vorhergehende Richtungswahl: {self.last_direction}\n"
                 f"Zurück gehen nicht erlaubt. Neue Richtungswahl: {action}\n")
-        if random.random() < 0.1:                                       # Exploration: zufällige Richtung wählen
-            action = random.choice(self.directions)                     # self.direction = ['up', 'down', 'left', 'right']
-            self.log_collector.add_log_txt(
-                f"Ereignis Zufällig gehen eingetrofen\n"
-                f"Vorhergehende Richtungswahl: {self.last_direction}, Neue Richtungswahl: {action}\n")
-        self.move_direction(action)                                         # Bewege dich
+        self.move_direction(action)                                      # --- Bewege dich ---
         self.last_direction = action
         reward =  float(round(max(-1, min(1,self.world.get_odor(self.pos_x, self.pos_y) - self.odor)) - 0.2, 2)) # Belonung Geruch + oder -, strafe,
         self.log_collector.add_log_txt(f"Bewegung nach: {action}, Belohnung berechnet: {reward}\n")
@@ -400,8 +424,8 @@ class Ant:
                 self.brain.episode.append((state, action, reward))          # Schreibe den Datensatz in episode
                 self.log_collector.add_log_txt(f"!!!!!!Essen gefunden!!!!!!\n"
                                                f"Belohnung: {reward}, Merke in Episode:{(state, action, reward)}\n")
-                self.brain.monte_carlo_calculate()                          # Schreibe in Q Datensatz
-                return                                                      # Datensatz schon geschrieben, Raus
+                self.brain.monte_carlo_calculate()                          # Führe Monte-Carlo-Berechnung durch
+                return                                                      # Episode bereits verarbeitet also return
         self.brain.episode.append((state, action, reward))                  # Schreibe den Datensatz in episode
         self.log_collector.add_log_txt(f"Merke in Episode:{(state, action, reward)}\n")
         self.log_collector.add_new_period()
@@ -481,6 +505,13 @@ class Ants:
         Leert die gesamte Liste der Ameisen.
         """
         self._ants.clear()
+
+    def get_ant(self, name):
+        for ant in self:
+            if ant.name == name:
+                return ant
+        logger.error("Fehler: Ameise nicht vorhanden.")
+        return None
 
     def generate_ants(self, crowd: int, ant_strategy: str, ant_machine_learning: str = None) -> None:
         """
@@ -757,7 +788,7 @@ class DataStorage:
             array.loc[len(array)] = (f"{state[0]}:{state[1]}:{state[2]}:{state[3]}", action, f"{value:.2f}")
             # print(f"Q-Wert für {state}, {action}: {value:.2f}")
             # print(file)
-        print(f"Speichere {file}")
+        logger.info(f"Speichere {file}")
         array.to_csv(file, index=False) # Speicher Array in CSV
 
     def load_brain_data(self, file: str):
@@ -797,10 +828,10 @@ class DataStorage:
             Optional[pd.DataFrame]: Eingelesenes DataFrame oder None bei Fehler.
         """
         try:
-            print(f"Lade {file}")
+            logger.info(f"Lade {file}")
             return pd.read_csv(file, index_col=False)  # Liest die CSV-Datei als Panda DataFrame ein
         except (FileNotFoundError, pd.errors.EmptyDataError) as e:
-            print(f"Fehler beim Lesen der CSV-Datei: {e}")
+            logger.error(f"Fehler beim Lesen der CSV-Datei: {e}")
             return pd.DataFrame()  # Gibt ein leeres DataFrame zurück als "Fallback"
 
     def save_settings(self, settings):

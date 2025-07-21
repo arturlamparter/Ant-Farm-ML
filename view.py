@@ -97,6 +97,10 @@ class TkSettingsWindow(tk.Tk):
         self.ants_var = tk.StringVar()  # Anzeige: Anzahl Ameisen
         self.food_var = tk.StringVar()  # Anzeige: Anzahl Futter
 
+        # --- Callbacks ---
+        self.ant_machine_learning_set = None
+        self.selected_ant_set = None
+
         # ===============================================
         # OBERSTE REIHE: Strategiewahl
         # ===============================================
@@ -193,20 +197,16 @@ class TkSettingsWindow(tk.Tk):
         tk.Label(self, text="Brain:", anchor="w", font=("Arial", 20)).grid(row=9, column=0, columnspan=1, padx=5, sticky="w")
 
         self.cmb_ant_machine_learning = ttk.Combobox(self, width=12)  # Ermöglicht die Auswahl der Machine Learning Methode
-        self.cmb_ant_machine_learning.grid(row=9, column=1, columnspan=1, padx=5)
+        self.cmb_ant_machine_learning.grid(row=9, column=1, columnspan=2, padx=5)
+        self.cmb_ant_machine_learning.bind("<<ComboboxSelected>>", lambda event: self.ant_machine_learning_set())
 
         # self.ent_brain = tk.Entry(self, width=7, justify='center') # Eingabe möglichkeit für die Anzahl (nicht Implementiert)
         # self.ent_brain.grid(row=9, column=3, columnspan=1, padx=5)
         # self.ent_brain.insert(0, "0")
 
-        self.btn_ant_machine_learning_set = tk.Button(self, text="Set >") # Setzt Lernmethoden
-        self.btn_ant_machine_learning_set.grid(row=9, column=2, columnspan=1, padx=5)
-
         self.cmb_selected_ant = ttk.Combobox(self, width=12)  # Ermöglicht die Auswahl der jeweiligen Ameise
-        self.cmb_selected_ant.grid(row=9, column=4, columnspan=1, padx=5)
-
-        self.btn_selected_ant_set = tk.Button(self, text="Set >")  # Setzt Lernmethoden
-        self.btn_selected_ant_set.grid(row=9, column=5, columnspan=1, padx=5)
+        self.cmb_selected_ant.grid(row=9, column=3, columnspan=2, padx=5)
+        self.cmb_selected_ant.bind("<<ComboboxSelected>>", lambda event: self.selected_ant_set())
 
         # ===============================================
         # CSV Info / Platzhaltertext
@@ -314,14 +314,6 @@ class TkSettingsWindow(tk.Tk):
         """Setzt den Callback für den 'Reset'-Button."""
         self.btn_reset.config(command=callback)
 
-    def set_btn_ant_machine_learning(self, callback):
-        """Setzt den Callback für den 'Set >'-Button (ML-Ameisen)."""
-        self.btn_ant_machine_learning_set.config(command=callback)
-
-    def set_btn_selected_ant_set(self, callback):
-        """Setzt den Callback für den 'Set >'-Button (Ameisenauswahl zum anzeigen)."""
-        self.btn_selected_ant_set.config(command=callback)
-
     def set_btn_save_ants_callback(self, callback):
         """Setzt den Callback für den 'Save CSV'-Button."""
         self.btn_save_ants.config(command=callback)
@@ -372,7 +364,7 @@ class TkSettingsWindow(tk.Tk):
         self.ent_ant_add.delete(0, tk.END)
         self.ent_ant_add.insert(0, ant)
 
-    def update_cmb_ant_machine_learning(self, values: list[str], set_value: str) -> None:
+    def update_cmb_ant_machine_learning(self, values: list[str], set_value: str, cb) -> None:
         """
         Setzt die Auswahlmöglichkeiten und den aktuell gewählten Wert der ML-Combobox.
 
@@ -382,8 +374,9 @@ class TkSettingsWindow(tk.Tk):
         """
         self.cmb_ant_machine_learning['values'] = values
         self.cmb_ant_machine_learning.set(set_value)
+        self.ant_machine_learning_set = cb
 
-    def update_cmb_selected_ant(self, values: list[str], set_value: str) -> None:
+    def update_cmb_selected_ant(self, values: list[str], set_value: str, cb) -> None:
         """
         Setzt die Auswahlmöglichkeiten und den aktuell gewählten Wert der Ameisen auswahl-Combobox.
 
@@ -393,6 +386,7 @@ class TkSettingsWindow(tk.Tk):
         """
         self.cmb_selected_ant['values'] = values
         self.cmb_selected_ant.set(set_value)
+        self.selected_ant_set = cb
 
     def update_lbl_set_brain(self, text: str) -> None:
         """Setzt den Text des Labels für ML-Statusanzeige (Brain)."""
