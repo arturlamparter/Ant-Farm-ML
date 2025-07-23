@@ -91,7 +91,7 @@ class TkSettingsWindow(tk.Tk):
         # --- Allgemeine Fenstereinstellungen ---
         self.name = "Ant Settings"
         self.title(self.name)
-        self.geometry("700x510")        # Fenstergröße
+        self.geometry("700x1000")        # Fenstergröße
 
         # --- Tkinter-Variablen zur Anzeige von Werten ---
         self.ants_var = tk.StringVar()  # Anzeige: Anzahl Ameisen
@@ -101,9 +101,7 @@ class TkSettingsWindow(tk.Tk):
         self.ant_machine_learning_set = None
         self.selected_ant_set = None
 
-        # ===============================================
-        # OBERSTE REIHE: Strategiewahl
-        # ===============================================
+        # --- OBERSTE REIHE: Strategiewahl ---
         tk.Label(self, text="Ant Strategie:", anchor="w", font=("Arial", 14)).grid(row=0, column=0, columnspan=1, padx=5)
         self.btn_random = tk.Button(self, text="Zufall")            # Zufallsbewegung (um 1 Position)
         self.btn_random.grid(row=0, column=1, columnspan=1, padx=5)
@@ -117,12 +115,13 @@ class TkSettingsWindow(tk.Tk):
         tk.Button(self, text="Extern").grid(row=0, column=4, columnspan=1, padx=5)           # Zuckünftige Anwendung
         tk.Button(self, text="Gesteuert").grid(row=0, column=5, columnspan=1, padx=5)      # Zuckünftige Anwendung
 
-        # ===============================================
-        # 2. REIHE: Geschwindigkeit / Steuerung
-        # ===============================================
-        tk.Label(self, text="Geschwindigkeit(FPS):", anchor="w", font=("Arial", 14)).grid(row=2, column=0, columnspan=2, padx=5, sticky="w")
+        # --- 2. REIHE: Geschwindigkeit / Steuerung ---
+        tk.Label(self, text="Speed(FPS):", anchor="w", font=("Arial", 14)).grid(row=2, column=0, columnspan=2, padx=5, sticky="w")
 
-        self.btn_pause = tk.Button(self, text="Pause")                           # Pausiert/Startet die Matrix
+        self.btn_step = tk.Button(self, text="Step")  # Pausiert/Startet die Matrix
+        self.btn_step.grid(row=2, column=1, columnspan=1, padx=5)
+
+        self.btn_pause = tk.Button(self, text=" ▶ / ⅠⅠ")                           # Pausiert/Startet die Matrix
         self.btn_pause.grid(row=2, column=2, columnspan=1, padx=5)
 
         self.sld_speed = tk.Scale(self, from_=1, to=60, orient="horizontal")     # Geschwindigkeit Schieberegler (Slider) , label="FPS"
@@ -134,9 +133,7 @@ class TkSettingsWindow(tk.Tk):
         self.btn_start = tk.Button(self, text=" \nStart\n ", font=("Arial", 24)) # Startet PyGame GUI, hebt Pause auf
         self.btn_start.grid(row=2, column=5, rowspan=5, padx=5)
 
-        # ===============================================
-        # 3. REIHE: Ant Setter
-        # ===============================================
+        # --- 3. REIHE: Ant Setter ---
         tk.Label(self, text="Ants Setter:", anchor="w", font=("Arial", 14)).grid(row=4, column=0, padx=5, sticky="w")
 
         self.lbl_ant_var_show = tk.Label(self, textvariable=self.ants_var, anchor="center", font=("Arial", 14))
@@ -152,9 +149,7 @@ class TkSettingsWindow(tk.Tk):
         self.btn_ant_add = tk.Button(self, text="Add >")                # Fügt die Ameisen in die Matrix ein
         self.btn_ant_add.grid(row=4, column=4, columnspan=1, padx=5)
 
-        # ===============================================
-        # 4. REIHE: Food Setter
-        # ===============================================
+        # --- 4. REIHE: Food Setter ---
         tk.Label(self, text="Food Setter:", anchor="w", font=("Arial", 14)).grid(row=6, column=0, columnspan=2, padx=5, sticky="w")
 
         self.lbl_food_var_show = tk.Label(self, textvariable=self.food_var, anchor="center", font=("Arial", 14))
@@ -170,9 +165,7 @@ class TkSettingsWindow(tk.Tk):
         self.btn_set_food = tk.Button(self, text="Set >")           # Ändert die Menge der verfügbaren Futterelementen
         self.btn_set_food.grid(row=6, column=4, columnspan=1, padx=5)
 
-        # ===============================================
-        # 5. REIHE: Odor / Reset
-        # ===============================================
+        # --- 5. REIHE: Odor / Reset ---
         self.btn_show_odor = tk.Button(self, text="Show ODOR")          # Zeigt die Geruchsmatrix im PyPlot
         self.btn_show_odor.grid(row=8, column=0, columnspan=1, padx=5)
 
@@ -191,26 +184,18 @@ class TkSettingsWindow(tk.Tk):
         self.btn_reset = tk.Button(self, text="Reset")
         self.btn_reset.grid(row=8, column=5, columnspan=1, padx=5) # Zuckünftige Anwendung
 
-        # ===============================================
-        # 6. REIHE: Machine Learning („Brain“)
-        # ===============================================
+        # --- 6. REIHE: Machine Learning („Brain“) ---
         tk.Label(self, text="Brain:", anchor="w", font=("Arial", 20)).grid(row=9, column=0, columnspan=1, padx=5, sticky="w")
 
         self.cmb_ant_machine_learning = ttk.Combobox(self, width=12)  # Ermöglicht die Auswahl der Machine Learning Methode
         self.cmb_ant_machine_learning.grid(row=9, column=1, columnspan=2, padx=5)
         self.cmb_ant_machine_learning.bind("<<ComboboxSelected>>", lambda event: self.ant_machine_learning_set())
 
-        # self.ent_brain = tk.Entry(self, width=7, justify='center') # Eingabe möglichkeit für die Anzahl (nicht Implementiert)
-        # self.ent_brain.grid(row=9, column=3, columnspan=1, padx=5)
-        # self.ent_brain.insert(0, "0")
-
         self.cmb_selected_ant = ttk.Combobox(self, width=12)  # Ermöglicht die Auswahl der jeweiligen Ameise
         self.cmb_selected_ant.grid(row=9, column=3, columnspan=2, padx=5)
         self.cmb_selected_ant.bind("<<ComboboxSelected>>", lambda event: self.selected_ant_set())
 
-        # ===============================================
-        # CSV Info / Platzhaltertext
-        # ===============================================
+        # --- CSV Info / Platzhaltertext ---
         self.lbl_set_brain = tk.Label(self, font=("Arial", 14))
         self.lbl_set_brain.grid(row=10, column=0, padx=5)           # Gewählte Strategieart
 
@@ -218,29 +203,17 @@ class TkSettingsWindow(tk.Tk):
         self.lbl_machine_learning.grid(row=11, column=0, padx=5)    # Gewählte Machine Learning
 
         tk.Label(self, text=f"", font=("Arial", 14)).grid(row=12, column=0, padx=5) # Zuckünftige Anwendung
-        tk.Label(self, text=f"", font=("Arial", 14)).grid(row=13, column=0, padx=5) # Zuckünftige Anwendung
-        tk.Label(self, text=f"", font=("Arial", 14)).grid(row=14, column=0, padx=5) # Zuckünftige Anwendung
-        tk.Label(self, text=f"", font=("Arial", 14)).grid(row=15, column=0, padx=5) # Zuckünftige Anwendung
-        tk.Label(self, text=f"", font=("Arial", 14)).grid(row=16, column=0, padx=5) # Zuckünftige Anwendung
-        tk.Label(self, text=f"", font=("Arial", 14)).grid(row=17, column=0, padx=5) # Zuckünftige Anwendung
-        tk.Label(self, text=f"", font=("Arial", 14)).grid(row=18, column=0, padx=5) # Zuckünftige Anwendung
-        tk.Label(self, text=f"", font=("Arial", 14)).grid(row=19, column=0, padx=5) # Zuckünftige Anwendung
-
-        # label = tk.Label(self, text=text, anchor="w", justify="left", font=("Arial", 14), bg="white")# Zuckünftige Anwendung
-        # label.grid(row=9, column=1, columnspan=200, rowspan=200, padx=5, sticky="we" )
 
         frame = ttk.Frame(self)                                   # Frame für Textfeld und Scrollbar
         frame.grid(row=10, column=1, columnspan=10, rowspan=10, padx=5, pady=5, sticky="nsew")
         scrollbar = ttk.Scrollbar(frame, orient="vertical")       # Scrollbar
         scrollbar.grid(row=0, column=1, sticky="ns")
-        self.text_widget = tk.Text(frame, width=55, height=10, font=("Arial", 14), wrap="word",
+        self.text_widget = tk.Text(frame, width=55, height=34, font=("Arial", 14), wrap="word",
         yscrollcommand=scrollbar.set, state="disabled", bg="white", relief="flat")  # Max. 10 sichtbare Zeilen
         self.text_widget.grid(row=0, column=0, sticky="nsew")
         scrollbar.config(command=self.text_widget.yview)          # Die Scrollbar mit einem Text Widget koppeln
 
-        # ===============================================
-        # Letzte Reihe: CSV speichern / Programm beenden
-        # ===============================================
+        # --- Letzte Reihe: CSV speichern / Programm beenden ---
         btn = tk.Button(self, text="Program")
         btn.grid(row=20, column=0, columnspan=1, padx=5)  # Zuckünftige Anwendung
         btn = tk.Button(self, text="Data") # Zuckünftige Anwendung
@@ -256,10 +229,7 @@ class TkSettingsWindow(tk.Tk):
         btn = tk.Button(self, text="Beenden", command=self.destroy) # App beenden
         btn.grid(row=20, column=5, columnspan=1, padx=5)
 
-    # ============================================================
-    # CALLBACK-VERKNÜPFUNGEN (View <- Controller)
-    # ============================================================
-
+    # --- CALLBACK-VERKNÜPFUNGEN (View <- Controller) ---
     def set_btn_random_callback(self, callback):
         """Setzt den Callback für die Zufallsstrategie."""
         self.btn_random.config(command=callback)
@@ -271,6 +241,9 @@ class TkSettingsWindow(tk.Tk):
     def set_btn_brain_callback(self, callback):
         """Setzt den Callback für die Brain/Machine-Learning-Strategie."""
         self.btn_brain.config(command=callback)
+
+    def set_btn_step_cb(self, cb):
+        self.btn_step.config(command=cb)
 
     def set_btn_pause_callback(self, callback):
         """Setzt den Callback für den Pause-Button."""
@@ -318,10 +291,7 @@ class TkSettingsWindow(tk.Tk):
         """Setzt den Callback für den 'Save CSV'-Button."""
         self.btn_save_ants.config(command=callback)
 
-    # ============================================================
-    # EINGABEN ABFRAGEN (View -> Controller)
-    # ============================================================
-
+    # --- EINGABEN ABFRAGEN (View -> Controller) ---
     def get_ent_ant_add_value(self):
         """Liest die Eingabe für die Anzahl der hinzuzufügenden Ameisen."""
         return self.ent_ant_add.get()   # Ameisen generate entry
@@ -342,9 +312,10 @@ class TkSettingsWindow(tk.Tk):
         """Liest die Auswahl aus der Ameisenauswahl-Combobox."""
         return self.cmb_selected_ant.get()
 
-    # ============================================================
-    # ANZEIGEN UND EINTRÄGE SETZEN
-    # ============================================================
+    # --- ANZEIGEN UND EINTRÄGE SETZEN ---
+
+    def update_sld_speed(self, speed):
+        self.sld_speed.set(speed)
 
     def update_ants_label(self, ants: str) -> None:
         """Aktualisiert die Anzeige der aktuellen Ameisenanzahl."""

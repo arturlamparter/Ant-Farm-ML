@@ -7,7 +7,7 @@
     "GRID_HEIGHT": 100,
     "Comment4": "Brain settings",
     "ANT_STRATEGY": "brain",
-    "ANT_MACHINE_LEARNING": "Monte-Carlo",
+    "ANT_MACHINE_LEARNING": "Q-Learning",
     "MONTE_CARLO_FILE": "Monte-Carlo-Methode.csv",
     "Q_LEARNING_FILE": "Q-Learning.csv",
     "Comment5": "Ants Color",

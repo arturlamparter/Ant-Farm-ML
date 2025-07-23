@@ -66,9 +66,14 @@ class PyGameController:
         """
         while self.running:
             self.handle_events()
-            if not self.world.world_pause:
+            if not self.world.world_pause:              # Pause
                 self.update()
                 self.game_view.render()
+
+            if self.world.step:                         # Schritt
+                self.world.step = False
+                self.world.world_pause = True
+
             self.clock.tick(self.world.clock_tick)  # Nur 10 Bilder pro Sekunde
 
     def handle_events(self):
@@ -105,20 +110,12 @@ class PyGameController:
                 ant.orka -= 1
             self.world.update_odor_world()                          # Aktualisiere Geruchsmatrix
         self.update_ant()                                                   # Updates Ant bezogen
-        self.update_food()                                                  # Updates Food bezogen
 
     def update_ant(self):
         """
         Aktualisiert die Anzeige der Ameisenanzahl in der Tkinter-Settings-UI.
         """
         self.settings_controller.tk_view.update_ants_label(len(self.world.ants)) # Setze die Ameisenanzahl im Tk Settings
-
-    def update_food(self):
-        """
-        Platzhalter-Methode für zukünftige Updates bzgl. Futter,
-        derzeit ohne Implementierung.
-        """
-        pass
 
 class TkSettingsController:                                             # HauptController (Tk Settings)
     """
@@ -156,6 +153,7 @@ class TkSettingsController:                                             # HauptC
         # Setze Callbacks für UI-Elemente auf Methoden
         self.tk_view.set_show_odor_callback(self.starte_im_thread)
         self.tk_view.set_btn_brain_callback(self.btn_brain)
+        self.tk_view.set_btn_step_cb(self.btn_step_click)
         self.tk_view.set_btn_ant_settings_cb(self.btn_ant_settings)
         self.tk_view.set_ant_add_callback(self.set_btn_ant_add)
         self.tk_view.set_btn_food_settings_cb(self.btn_food_settings)
@@ -173,6 +171,8 @@ class TkSettingsController:                                             # HauptC
         # Initialisiere Standardwerte und UI-Status
         self.world.clock_tick = 10                                   # Simulationsgeschwindigkeit
         self.world.world_pause = False
+        self.tk_view.update_sld_speed(self.world.clock_tick)         # Setze Geschwindigkeits Slider
+
         # self.world.ant_machine_learning = "Q-Learning"  # Bestimte brain Methode ["Monte-Carlo", "Q-Learning"]
         # self.world.foods.set_food = 1                               # Anzahl der Essens Objekte setzen
         # self.world.foods.generate_food(self.world.foods.set_food)   # Generiere essen
@@ -209,6 +209,10 @@ class TkSettingsController:                                             # HauptC
         self.ant_strategy = "brain"
         self.ant_machine_learning = "Monte-Carlo"
         self.update_settings_window()
+
+    def btn_step_click(self):
+        self.world.world_pause = False
+        self.world.step = True
 
     def btn_ant_settings(self):
         ant_settings_obj = view.AntSettingsWindow(self.tk_view)
@@ -333,8 +337,8 @@ class TkSettingsController:                                             # HauptC
         self.tk_view.update_ent_set_food(0)     # Setze Food entry auf Null
         self.world.foods.clear()                # Lösche alle Foods
         self.set_btn_food()                     # Aktualisiere Foods
-        self.tk_view.update_cmb_selected_ant(["000"],"000")
         self.world.world_pause = False          # Starte wieder
+        self.update_settings_window()
 
     def cmb_ant_machine_learning(self):
         """
@@ -366,7 +370,7 @@ class TkSettingsController:                                             # HauptC
         """
         Aktualisiert die Grundlegende Labels im tk_view
         """
-        self.tk_view.sld_speed.set(self.world.clock_tick)           # Setze Geschwindigkeits Slider
+        self.world.clock_tick = self.tk_view.get_sld_speed_value()  # Setze Geschwindigkeit von dem slider
         self.tk_view.update_ants_label(len(self.world.ants))        # Setze Ameisenanzahl Label
         self.tk_view.update_food_label(self.world.foods.set_food)   # Setze Futteranzahl Label
         self.tk_view.update_lbl_set_brain(self.ant_strategy)        # Setze label für Strategie

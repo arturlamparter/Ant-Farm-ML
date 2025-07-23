@@ -71,6 +71,35 @@ PINK = (255, 105, 180)
 GRAY = (128, 128, 128)
 """
 
+class Perzeptron:
+    def __init__(self, n, b=0):
+        self.w = [] # Gewichte
+        self.n = n # Eingänge anzahl
+        self.b = b # Bias
+
+        for _ in range(n):
+            w = random.uniform(-1, 1)
+            self.w.append(w)
+
+    def berechne(self, x_lst): # Liste z.B. [x, ...]
+        sum = 0
+        for i, x in enumerate(x_lst):
+            sum += self.w[i] * x # gewichtete Summe
+        sum += self.b # Bias zum Ergebnis hinzufügen
+
+        if sum >= 0: # Schwellenwertaktivierung
+            return 1
+        else:
+            return 0
+
+    def lerne(self, x_lst, y_actually, y_predicted, eta=0.1):
+        mistake = y_actually - y_predicted # Fehlerberechnung
+
+        for i in range(self.n): # Update der Gewichte
+            self.w[i] += eta * mistake * x_lst[i]
+
+        self.b += eta * mistake # Update des Bias
+
 class Brain: # Hier werden Die daten als auch die Methoden für ML bereitgestellt
     """
     Die `Brain`-Klasse stellt Datenstrukturen und Algorithmen für
@@ -140,16 +169,16 @@ class Brain: # Hier werden Die daten als auch die Methoden für ML bereitgestell
         Monte Carlo First-Visit Q-Wert-Aktualisierung auf Basis einer Episode.
         """
         self.log_collector.add_log_txt(f"------Monte-Carlo-Q-Wert-Berechnung--------\n")
-        g = 0                               # zukünftige Belohnung
-        visited = set()  # speichert besuchte (state, action)
+        g = 0                                   # zukünftige Belohnung
+        visited = set()                         # speichert besuchte (state, action)
 
         for i, (state, action, reward) in enumerate(reversed(self.episode)):
-            g = reward + self.gamma * g     # zukünftige Belohnung berechnen
-            key = (state, action)           # Dict Key
+            g = reward + self.gamma * g         # zukünftige Belohnung berechnen
+            key = (state, action)               # Dict Key
 
-            if key not in visited:          # First-visit check
-                visited.add(key)            # Merke bereits verarbeitete
-                old_q = self._q.get(key, 0) # Prognose berechnung
+            if key not in visited:              # First-visit check
+                visited.add(key)                # Merke bereits verarbeitete
+                old_q = self._q.get(key, -1)    # Prognose berechnung
                 self._q[key] = old_q + self.alpha * (g - old_q)
 
                 self.log_collector.add_log_txt(
@@ -171,15 +200,26 @@ class Brain: # Hier werden Die daten als auch die Methoden für ML bereitgestell
             reward (float): Erhaltene Belohnung
             next_state (Any): Nächster Zustand nach der Aktion
         """
-        self.log_collector.add_log_txt(f"------Berechnung der Q-Werte für Q-Learning--------\n")
-        current_q = self._q.get((state, action), 0)
-        next_q_values = [self._q.get((next_state, a), 0) for a in ['up', 'down', 'left', 'right']]
-        max_next_q = max(next_q_values)
-        new_q = current_q + self.alpha * (reward + self.gamma * max_next_q - current_q) # Q-Learning Formel
-        self._q[(state, action)] = new_q
-        self.log_collector.add_log_txt(f"Status:{state} - Richtung:{action} - Zuküftige möglichkeiten:{next_q_values}\n"
-                                       f"Gewählter Wert:{max_next_q:.2f}\n"
-                                       f"Bereits vorhandener Wert für Status und Richtung:{current_q:.2f}, Ersetzt durch: {new_q:.2f}\n")
+        self.log_collector.add_log_txt(
+        f"------Berechnung der Q-Werte für Q-Learning(lernen)--------\n"
+        f"Gesammelte Werte!\n"
+        f"Aktueller Status:\n"
+        f"Oben: {state[0]:+d}      Unten: {state[1]:+d}       Links: {state[2]:+d}       Rechts: {state[3]:+d}\n"
+        f"Richtung: {action}, Belohnung: {reward}\n"
+        f"Nächste Position: \n"
+        f"Oben: {next_state[0]:+d}      Unten: {next_state[1]:+d}       Links: {next_state[2]:+d}       Rechts: {next_state[3]:+d}\n")
+
+        current_q = self._q.get((state, action), 0)                                             # Aktueller Q-Wert
+        next_q_value = [self._q.get((next_state, a), 0) for a in ['up', 'down', 'left', 'right']] # Q-Werte aller Aktionen im nächsten Zustand
+        max_next_q = max(next_q_value)                                                          # Höchster Q-Wert im nächsten Zustand
+        # Formel: Q(s,a) ← Q(s,a) + α [r + γ max_a' Q(s',a') − Q(s,a)]
+        new_q = current_q + self.alpha * (reward + self.gamma * max_next_q - current_q)
+        self._q[(state, action)] = new_q                                                        # Speichern für aktuellen Zustand
+        self.log_collector.add_log_txt(f"Zuküftige möglichkeiten:\n"
+        f"Oben: {float(next_q_value[0]):+.1f}   Unten: {float(next_q_value[1]):+.1f}     Links: {float(next_q_value[2]):+.1f}     Rechts: {float(next_q_value[3]):+.1f}\n"
+        f"Maximaler Wert: {max_next_q:.1f}\n"
+        f"Formel: Q(s,a) ← Q(s,a) + α [r + γ max_a' Q(s',a') − Q(s,a)]\n"
+        f"Alter Q-Wert: {current_q:.1f} wird durch: {new_q:.1f} aus der Berechnung ersetzt\n")
 
     def get_q_value(self, state, action):
         """
@@ -299,8 +339,7 @@ class Ant:
         elif direction == 'right':
             self.set_pos(self.pos_x + 1, self.pos_y)
         else:
-            pass
-            # print(f"Keine richtung vorhanden.({direction})")
+            logger.error(f"Die übergebene Richtung ist nicht möglich.({direction})")
 
     def move(self) -> None: # Hier wird die Ameise bewegt mit pos_x und pos_y
         """
@@ -316,7 +355,7 @@ class Ant:
         elif self.brain.ant_strategy == "brain" and self.brain.ant_machine_learning == "Q-Learning":
             self.move_brain_q_learning()
         else:
-            logger.critical(f"Keine korrekte move Methode übergeben. "
+            logger.critical(f"Keine korrekte move Strategie. \n"
                             f"Strategie:{self.brain.ant_strategy}, ML:{self.brain.ant_machine_learning}")
 
     def calculate_state(self): # Geruchsunterschiede als Zustand
@@ -340,40 +379,52 @@ class Ant:
         """
         state = self.calculate_state()                                      # Aktueller Status
         q_value = [round(float(self.brain.get_q_value(state, d)), 1) for d in self.directions] # Q-Werte für alle Richtungen
-        q_max = max(q_value)
-        new_directions = [d for q, d in zip(q_value, self.directions) if q == q_max]
-        action = random.choice(new_directions)
         self.log_collector.add_log_txt(
             f"Position: X: {self.pos_x}, Y: {self.pos_y}, Energie: {self.orka}, Futtergefunden: {self.food_found}\n"
             f"------------------------------------------------------------------------------------------\n"
-            f"Positionsgeruch:{self.odor}, Berechneter State:{state}, Anfrage Q-Value:{q_value}, Q-Max:{q_max},\n"
-            f" Mögliche Richtungen:{new_directions}, Bestimmt:{action}, letzte aktion:{self.last_direction}\n")
-        # Rückwärtsgehen vermeiden
-        opposites = {'up': 'down', 'down': 'up', 'left': 'right', 'right': 'left'}
-        if opposites.get(action) == self.last_direction:
-            directions = self.directions.copy()
-            directions.remove(action)
-            action = random.choice(directions)
-            self.log_collector.add_log_txt(f"Ereignis Zurück gehen eingetrofen\n"
-                f"Vorhergehende Richtungswahl: {self.last_direction}\n"
-                f"Zurück gehen nicht erlaubt. Neue Richtungswahl: {action}\n")
-        if random.random() < 0.1:                                           # Exploration: zufällige Richtung wählen
-            action = random.choice(self.directions)                         # self.direction = ['up', 'down', 'left', 'right']
-            self.log_collector.add_log_txt(f"Zufällig gehen eingetroffen:{action}\n")
+            f"Geruchswahrnehmung Position: {self.odor}\nBerechneter Status:\n"
+            f"Oben: {state[0]:+d}      Unten: {state[1]:+d}       Links: {state[2]:+d}       Rechts: {state[3]:+d}\n"
+            f"Gefundene Erfahrungen im Brain:\n"
+            f"Oben: {float(q_value[0]):+.1f}   Unten: {float(q_value[1]):+.1f}     Links: {float(q_value[2]):+.1f}     Rechts: {float(q_value[3]):+.1f}\n")
+
+        q_value.clear()
+        for d in self.directions:                                   # Gehe alle 4 Richtungen durch
+            q = round(float(self.brain.get_q_value(state, d)), 1)   # Hole jeweils Q Werte
+            if self.opposites.get(d) == self.last_direction:        # Finde zurückgehen
+                self.log_collector.add_log_txt(
+                    f"Berücksichtigung zurückgehen minimieren! Richtung: {self.last_direction}\n"
+                    f"Alte Bewertung: {q:+.1f} Erschwert. Neue bewertung: {q - 2:+.1f}\n")
+                q -= 2                                              # Rückwärtsgehen vermeiden
+            q_value.append(q)                                       # In die Liste
+
+        q_max = max(q_value)  # Höchster wert gewinnt
+        best_actions = [d for q, d in zip(q_value, self.directions) if q == q_max]  # Vier Richtungen durchgehen
+
+        if random.random() < self.eps:                              # Exploration: zufällige Richtung wählen
+            action = random.choice(self.directions)                 # self.direction = ['up', 'down', 'left', 'right']
+            self.log_collector.add_log_txt(
+                f"Ereignis Zufällig gehen eingetrofen\n"
+                f"Bisher die Besten aktionen: {best_actions}, Neue Richtungswahl: {action}\n")
+        else:
+            action = random.choice(best_actions)                                        # Richtung Höchster wert merken
+            self.log_collector.add_log_txt(
+                f"Berechnete Richtungen: {best_actions} Gewählte Richtung: {action}\n"
+                f"Vorhergehende Richtungswahl: {self.last_direction} \n")
+
         self.move_direction(action)                                         # Bewegung ausführen
         self.last_direction = action
-        old_odor = self.odor                                                # Alten Geruch merken
+
         self.odor = self.world.get_odor(self.pos_x, self.pos_y)             # Neuen Geruch holen
         next_state = self.calculate_state()                                 # Zucküftiger Status
-        reward = float(round(max(-1, min(1, self.odor - old_odor)) - 0.2, 2)) # Belohnung berechnen
-        for food in self.world.foods: # Futter gefunden
+        reward = -0.2                                                       # Bestrafung
+        for food in self.world.foods:                                       # Futter gefunden
             if food.get_position() == self.get_position():
-                reward += 5
-                self.log_collector.add_log_txt(f"Essen gefunden\n")
+                reward += 10
+                self.log_collector.add_log_txt(f" --- !!!Essen gefunden!!! --- \n"
+                                               f"Belohnung: {reward}\n")
         self.brain.q_learning_calculate(state, action, reward, next_state) # Q-Learning Update
-        self.log_collector.add_log_txt(f"!!!Bewegung!!!\n"
-            f"Neuer Positionsgeruch:{self.odor}, Berechneter Nexter State:{next_state}\n"
-            f" Anfrage Q-Value:{q_value}, Belohnung:{reward} neuer Geruch:{self.odor}\n")
+        self.log_collector.add_log_txt(f" --- !!!Bewegung!!! --- \n"
+            f"Neuer Positionsgeruch:{self.odor}\n")
         self.log_collector.add_new_period()
 
     def move_brain_monte_carlo(self) -> None: # print(f"{}")
@@ -386,43 +437,47 @@ class Ant:
         Falls Futter gefunden wird, wird die Monte-Carlo-Rückpropagierung ausgelöst.
         """
         state = self.calculate_state()                                                  # Aktueller Status
-        q_value = [round(float(self.brain.get_q_value(state, d)), 1) for d in self.directions] # Liste von 4 Q Werten
-        if random.random() < self.eps:                      # Exploration: zufällige Richtung wählen
-            action = random.choice(self.directions)         # self.direction = ['up', 'down', 'left', 'right']
+        q_value = [round(float(self.brain.get_q_value(state, d)), 1) for d in self.directions]
+        self.log_collector.add_log_txt(
+            f"Position: X: {self.pos_x}, Y: {self.pos_y}, Energie: {self.orka}, Futtergefunden: {self.food_found}\n"
+            f"------------------------------------------------------------------------------------------\n"
+            f"Geruchswahrnehmung Position: {self.odor}\n"
+            f"Oben: {state[0]:+d}      Unten: {state[1]:+d}       Links: {state[2]:+d}       Rechts: {state[3]:+d}\n"
+            f"Gefundene Erfahrungen im Brain:\n"
+            f"Oben: {float(q_value[0]):+.1f}   Unten: {float(q_value[1]):+.1f}     Links: {float(q_value[2]):+.1f}     Rechts: {float(q_value[3]):+.1f}\n")
+        q_value.clear()
+        for d in self.directions:  # Gehe alle 4 Richtungen durch
+            q = round(float(self.brain.get_q_value(state, d)), 1)
+            if self.opposites.get(d) == self.last_direction:
+                self.log_collector.add_log_txt(
+                    f"Berücksichtigung zurückgehen minimieren! Richtung: {self.last_direction}\n"
+                    f"Alte Bewertung: {q:+.1f} Erschwert. Neue bewertung: {q-2:+.1f}\n")
+                q -= 2
+            q_value.append(q)
+
+        q_max = max(q_value)  # Höchster wert gewinnt
+        best_actions = [d for q, d in zip(q_value, self.directions) if q == q_max]  # Vier Richtungen durchgehen
+
+        if random.random() < self.eps:  # Exploration: zufällige Richtung wählen
+            action = random.choice(self.directions)  # self.direction = ['up', 'down', 'left', 'right']
             self.log_collector.add_log_txt(
                 f"Ereignis Zufällig gehen eingetrofen\n"
-                f"Vorhergehende Richtungswahl: {self.last_direction}, Neue Richtungswahl: {action}\n")
+                f"Bisher die Besten aktionen: {best_actions}, Neue Richtungswahl: {action}\n")
         else:
-            q_max = max(q_value)                                                        # Höchster wert gewinnt
-            best_actions = [d for q, d in zip(q_value, self.directions) if q == q_max]  # Vier Richtungen durchgehen
             action = random.choice(best_actions)                                        # Richtung Höchster wert merken
             self.log_collector.add_log_txt(
-                f"Position: X: {self.pos_x}, Y: {self.pos_y}, Energie: {self.orka}, Futtergefunden: {self.food_found}\n"
-                f"------------------------------------------------------------------------------------------\n"
-                f"Geruchswahrnehmung Position: {self.odor}\n"
-                f"Oben: {state[0]}      Unten: {state[1]}       Links: {state[2]}       Rechts: {state[3]}\n"
-                f"Gefundene Erfahrungen im Brain:\n"
-                f"Oben: {q_value[0]}   Unten: {q_value[1]}     Links: {q_value[2]}     Rechts: {q_value[3]}\n"
                 f"Berechnete Richtungen: {best_actions} Gewählte Richtung: {action}\n"
                 f"Vorhergehende Richtungswahl: {self.last_direction} \n")
-        if self.opposites.get(action) == self.last_direction:           # zurück gehen verboten
-            directions = self.directions.copy()                         # Richtungen kopieren
-            del directions[directions.index(action)]                    # Zurück löschen
-            action = random.choice(directions)                          # Richtung Zufällig ohne Zurück
-            self.log_collector.add_log_txt(
-                f"Ereignis Zurück gehen eingetrofen\n"
-                f"Vorhergehende Richtungswahl: {self.last_direction}\n"
-                f"Zurück gehen nicht erlaubt. Neue Richtungswahl: {action}\n")
-        self.move_direction(action)                                      # --- Bewege dich ---
+        self.move_direction(action)                                         # --- Bewege dich ---
         self.last_direction = action
-        reward =  float(round(max(-1, min(1,self.world.get_odor(self.pos_x, self.pos_y) - self.odor)) - 0.2, 2)) # Belonung Geruch + oder -, strafe,
-        self.log_collector.add_log_txt(f"Bewegung nach: {action}, Belohnung berechnet: {reward}\n")
+        reward = -0.2                                                       # Strafe
+        self.log_collector.add_log_txt(f"Bewegung nach: {action}, Kleine Bestrafung: {reward}\n")
         self.odor = self.world.get_odor(self.pos_x, self.pos_y)             # Hole Geruch
         for food in self.world.foods:                                       # Foods durchsuchen
             if food.get_position() == self.get_position():                  # Wenn Futter gefunden
-                reward += 10                                                 # Belohnung
+                reward += 10                                                # Belohnung
                 self.brain.episode.append((state, action, reward))          # Schreibe den Datensatz in episode
-                self.log_collector.add_log_txt(f"!!!!!!Essen gefunden!!!!!!\n"
+                self.log_collector.add_log_txt(f" --- !!!Essen gefunden!!! --- \n"
                                                f"Belohnung: {reward}, Merke in Episode:{(state, action, reward)}\n")
                 self.brain.monte_carlo_calculate()                          # Führe Monte-Carlo-Berechnung durch
                 return                                                      # Episode bereits verarbeitet also return
@@ -443,6 +498,14 @@ class Ant:
         max_value = max(state)  # Höchster wert gewinnt
         new_directions = [d for q, d in zip(state, self.directions) if q == max_value]  # Vier Richtungen durchgehen
         action = random.choice(new_directions)  # Richtung Höchster wert merken
+        if self.opposites.get(action) == self.last_direction:           # zurück gehen verboten
+            directions = self.directions.copy()                         # Richtungen kopieren
+            del directions[directions.index(action)]                    # Zurück löschen
+            action = random.choice(directions)                          # Richtung Zufällig ohne Zurück
+            self.log_collector.add_log_txt(
+                f"Ereignis Zurück gehen eingetrofen\n"
+                f"Vorhergehende Richtungswahl: {self.last_direction}\n"
+                f"Zurück gehen nicht erlaubt. Neue Richtungswahl: {action}\n")
         self.log_collector.add_log_txt(
             f"Ameise:{self.name}, Strategie: {self.brain.ant_strategy}, Lernmethode:{self.brain.ant_machine_learning}\n"
             f"Position: X:{self.pos_x}, Y:{self.pos_y}, Energie:{self.orka}, Futtergefunden:{self.food_found}\n"
@@ -452,6 +515,7 @@ class Ant:
             f"Berechnete Richtungen:{new_directions} Gewählte Richtung:{action}\n"
             f"------------------------------------------------------------------------------------------\n")
         self.move_direction(action)
+        self.last_direction = action
         self.log_collector.add_new_period()
 
     def move_random(self) -> None: # Zufällig immer eine Position springen
@@ -648,6 +712,7 @@ class World:
 
         self.clock_tick = 1
         self.world_pause = False
+        self.step = False
         self.ants = Ants(self)
         self.foods = Foods()
         self.update_odor_world()
@@ -719,7 +784,8 @@ class LogCollector:
         self.name = name
         self.ant_strategy =  ant_strategy
         self.ant_machine_learning = ant_machine_learning
-        self._periods = [f"Ameise:{name}, Strategie: {ant_strategy}, Lernmethode:{ant_machine_learning}\n"]
+        self.title = f"Ameise: {name}, Strategie: {ant_strategy}, Lernmethode: {ant_machine_learning}\n"
+        self._periods = [self.title]
         self.period = 0
         self.update_log_text_widget = None
 
@@ -740,7 +806,8 @@ class LogCollector:
         """
         self.update_log_text_widget()
         self.period += 1
-        self._periods.append(self.PERIOD_SEPARATOR + f"Ant:{self.name}, Strategie: {self.ant_strategy}, Lernmethode:{self.ant_machine_learning}, Step: {self.period}\n")
+        # self._periods.append(self.PERIOD_SEPARATOR + f"Ant: {self.name}, Strategie: {self.ant_strategy}, Lernmethode: {self.ant_machine_learning}, Step: {self.period}\n")
+        self._periods.append(self.PERIOD_SEPARATOR + self.title)
 
     def get_formatted_info(self):
         """
