@@ -144,10 +144,9 @@ class TkSettingsController:                                             # HauptC
         self.world = model.World()                                      # Enthält alle Weltobjekte (Matrix)
         self.tk_view = tk_view                                          # Tk Settings
         self.py_game_controller = PyGameController(self, self.world)
-        self.machine_learning_methods = ["Monte-Carlo", "Q-Learning"]
+        self.machine_learning_methods = ["Monte-Carlo", "Q-Learning", "Perzeptron"]
         self.ant_strategy = model.ANT_STRATEGY  # Unterschiedliche Food suche Strategien ["random" ,"odor", "brain"]
         self.ant_machine_learning = model.ANT_MACHINE_LEARNING  # Bestimte brain Methode
-        # self.brain_csv_file = None
         self.cmb_ant_selected = "000"
 
         # Setze Callbacks für UI-Elemente auf Methoden
@@ -181,7 +180,7 @@ class TkSettingsController:                                             # HauptC
 
 
         # Konfiguration der Tk Elemente
-        self.tk_view.update_ent_set_food(5) # Setze Food Entry
+        self.tk_view.update_ent_set_food(100) # Setze Food Entry
         self.tk_view.update_ent_ant_add(1)  # Setze Ant Entry
 
         # --- Alles aktualisieren ---
@@ -293,6 +292,7 @@ class TkSettingsController:                                             # HauptC
         Setzt die Ameisenstrategie auf "random" und aktualisiert das UI.
         """
         self.ant_strategy = "random"
+        self.ant_machine_learning = "Keine"
         self.update_settings_window()
 
     def btn_odor(self):
@@ -300,6 +300,7 @@ class TkSettingsController:                                             # HauptC
         Setzt die Ameisenstrategie auf "odor" (Geruch folgen) und aktualisiert das UI.
         """
         self.ant_strategy = "odor"
+        self.ant_machine_learning = "Keine"
         self.update_settings_window()
 
     def show_csv_btn(self):
@@ -311,7 +312,7 @@ class TkSettingsController:                                             # HauptC
         ant = self.world.ants.get_ant(self.cmb_ant_selected)
         if ant:
             if ant.brain.ant_strategy == "brain":
-                 view.CSVViewer(csv_path=ant.brain.csv_file).mainloop()
+                 view.CSVViewer(csv_path=ant.brain.data_file).mainloop()
             else:
                 model.logger.info("Nur im Brain Modus Möglich.")
         else:
@@ -364,7 +365,7 @@ class TkSettingsController:                                             # HauptC
         """
         self.world.world_pause = True
         ant = self.world.ants.get_ant(self.cmb_ant_selected)
-        if ant: ant.brain.save_data_to_csv()
+        if ant: ant.brain.save_q_to_csv()
 
     def update_settings_window(self):
         """
