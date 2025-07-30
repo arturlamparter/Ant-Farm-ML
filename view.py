@@ -506,7 +506,7 @@ class CSVViewer(tk.Tk):
     def __init__(self, csv_path=None):
         super().__init__()
         self.title(csv_path)
-        self.geometry("300x900")  # Fenstergröße
+        self.geometry("600x900")  # Fenstergröße
         self.tree = None
         self.df = None
 
@@ -543,10 +543,9 @@ class CSVViewer(tk.Tk):
     def load_csv(self, path):
         try:
             self.df = pd.read_csv(path, sep=",", on_bad_lines='skip')
-            self.df['value'] = pd.to_numeric(self.df['value'], errors='coerce')
             self.display_dataframe()
         except Exception as e:
-            print("Fehler beim Laden der Datei:", e)
+            model.logger.error(f"Fehler beim Laden der Datei({path}): {e}")
 
     def display_dataframe(self):
         # Spalten löschen

@@ -12,7 +12,9 @@ import pandas as pd
 import numpy as np
 import random
 import json
+import math
 import logging
+from collections import deque
 
 import main
 
@@ -73,43 +75,101 @@ GRAY = (128, 128, 128)
 """
 
 class Perzeptron:
-    def __init__(self, n, log_collector, b=0):
-        self.w = []             # Gewichte
+    def __init__(self, n, log_collector):
+        self._w = []            # Gewichte
         self.n = n              # Eingängeanzahl
-        self.b = b              # Bias
-        self.alpha = 0.1        # Lernrate
-        self.gamma = 0.9        # Diskontierungsfaktor
+        self._b = 1             # Bias
         self.log_collector = log_collector
-
+        self.eta = 0.1
         for _ in range(n):      # Initiire Gewichte
-            w = 1
-            # w = random.uniform(0, 1)
-            self.w.append(w)
+            # w = 1
+            w = random.uniform(-1, 1)
+            self._w.append(w)
+
+    def update_eta(self, output_error):
+        if output_error > 10:
+            self.eta = 0.01 * output_error / 100
+        else:
+            self.eta = 0
+        """
+        durchschnitt = sum(self._w) / len(self._w)
+        abw_liste = []
+        # max_abw = max(abs(w - durchschnitt) for w in self._w)
+        for w in self._w:
+            abweichung = abs(w - durchschnitt)
+            abw_liste.append(abweichung)
+        max_abw = max(abw_liste)
+
+        # # Werte festlegen
+        # max_abw_clamp = 5
+        # min_eta = 0.001
+        # max_eta = 0.2
+        # # Begrenze max_abw auf 0 bis max_abw_clamp
+        # abw = min(max_abw, max_abw_clamp)
+        # abw = max(abw, 0)
+        # # Invers interpolieren (mehr Abweichung -> weniger eta)
+        # self.eta = max_eta - (abw / max_abw_clamp) * (max_eta - min_eta)
+
+        # max_eta = bei niedriger Abweichung
+        # min_eta = bei hoher Abweichung
+        max_eta = 0.2
+        min_eta = 0.00000001
+
+        # Kontrolliert die Steilheit (größer = schnellerer Abfall)
+        k = 1.0
+
+        self.eta = min_eta + (max_eta - min_eta) * math.exp(-k * max_abw)
+    """
 
     def berechne(self, x_lst): # Liste z.B. [x, ...]
         sum = 0
         for i, x in enumerate(x_lst):
-            sum += self.w[i] * x        # gewichtete Summe
-        sum += self.b                   # Bias zum Ergebnis hinzufügen
+            sum += self._w[i] * x        # gewichtete Summe
+        sum += self._b                   # Bias zum Ergebnis hinzufügen
 
-        if sum >= 0:                    # Schwellenwertaktivierung
+        if sum >= 30:                    # Schwellenwertaktivierung
             return 1
         else:
             return 0
 
-    def lerne(self, x_lst, y_actually, y_predicted, eta=0.1):
-        mistake = y_actually - y_predicted  # Fehlerberechnung: jetzt - vorhergesagt
+    def lerne(self, x_lst, y_actually, y_predicted): # epoch=0, max_epochs=100
+        lambda_reg = 0.001
+        # lambda_reg = Regularisierungsfaktor (Kleiner Wert -> Schwache Regularisierung)
+        mistake = y_actually - y_predicted  # Fehlerberechnung  jetzt - vorhergesagt
 
-        self.log_collector.add_log_txt(f"------Perzeptron Brain Berechnung--------\n"
+        # Reduziere die Lernrate mit fortschreitendem Training
+        # eta = eta / (1 + epoch / max_epochs)  # Lernrate verringern, je länger das Training läuft
+
+        self.log_collector.add_log_txt(f"------Perzeptron-Berechnung--------\n"
             f"Übergebene Werte:\n"
-            f"Eingabe: {x_lst}, Aktueller Wert: {y_actually}, Vorhergesagter Wert: {y_predicted}\n"
-            f"Berechneter Fehler: {mistake}, Werte vor Anpassung: {self.w[0]:.2f}{self.w[1]:.2f}{self.w[2]:.2f}{self.w[3]:.2f}, Bias: {self.b}\n")
+            f"Eingabe: {x_lst}, Aktueller Wert: {y_actually}, Vorhergesagter Wert: {y_predicted}, Berechneter Fehler: {mistake}\n"
+            f"Werte vor Anpassung: {self._w[0]:.2f} {self._w[1]:.2f} {self._w[2]:.2f} {self._w[3]:.2f}, Bias: {self._b:.2f}, Eta: {self.eta}\n")
 
-        for i in range(self.n):                     # Update der Gewichte
-            self.w[i] += eta * mistake * x_lst[i]
+        # self.update_eta()
+        # self.eta = 0.1
 
-        self.b += eta * mistake  # Update des Bias
-        self.log_collector.add_log_txt(f"Werte nach Anpassung: {self.w[0]:.2f}{self.w[1]:.2f}{self.w[2]:.2f}{self.w[3]:.2f}, Bias: {self.b}\n")
+        for i in range(self.n):
+            self._w[i] += self.eta * mistake * x_lst[i] # Update der Gewichte
+
+        # Update des Bias
+        # self._b += self.eta * mistake
+        if self._b > -4 and self._b < 4: self._b += self.eta * mistake
+        # self._b += self.eta * mistake - lambda_reg * self._b
+        # round(self._b, 3)
+
+        self.log_collector.add_log_txt(
+            f"Werte nach Anpassung: {self._w[0]:.2f} {self._w[1]:.2f} {self._w[2]:.2f} {self._w[3]:.2f}, Bias: {self._b:.2f}, Eta: {self.eta}\n")
+
+    def save(self):
+        self._w = [round(w, 2) for w in self._w]
+        self._b = round(self._b, 2)
+        return self._w, self._b
+
+    def load(self, data):
+        if len(data) < 2:
+            logger.critical("Daten fehlerhaft: Erwartet mindestens 1 Gewicht und 1 Bias.")
+            raise ValueError("Zu wenige Werte in data.")
+        *self._w, self._b = data
 
 class Brain:        # Hier werden Die daten als auch die Methoden für ML bereitgestellt
     """
@@ -130,8 +190,10 @@ class Brain:        # Hier werden Die daten als auch die Methoden für ML bereit
         self.ant_machine_learning = ant_machine_learning    # Bestimte brain Methode ["Monte-Carlo", "Q-Learning", "Perzeptron"]
         self.directions = DIRECTIONS  # Mögliche Richtungen
         self.log_collector = None
+        self.output_error = 100
         self.alpha = 0.1
         self.gamma = 0.9
+        self.eta = 0.1
         self.data_file = self.set_file_path()
         self.ant_name = None
         self.log_collector = LogCollector(self.name, self.ant_strategy, self.ant_machine_learning)
@@ -196,26 +258,37 @@ class Brain:        # Hier werden Die daten als auch die Methoden für ML bereit
                 q[(state, row[2])] = row[3]
             return q
         elif self.ant_machine_learning == "Perzeptron":
-            # data = DataStorage().load_data_from_csv_file(file)
-            data = None
+            data = DataStorage().load_data_from_csv_file(file)
+            q = []
             if data is None or data.empty:
-                data = []
-                for i in range(4):
-                    data.append(Perzeptron(4, self.log_collector))
-            return data
+                q = [Perzeptron(4, self.log_collector) for _ in range(4)]
+                logger.info("Leere Datenquelle: Initialisiere 4 leere Perzeptrons.")
+            else:
+                for row in data.itertuples(index=False):
+                    p = Perzeptron(4, self.log_collector)
+                    p.load(row)
+                    q.append(p)
 
-    def save_q_to_csv(self):
-        """
-        Speichert das Q-Dictionary in eine CSV-Datei.
-        """
-        if self.ant_strategy == "brain":
+            return q
+
+    def save_brain_data(self):
+        if self.ant_machine_learning == "Monte-Carlo" or self.ant_machine_learning == "Q-Learning":
+            # Speichert das Q-Dictionary in eine CSV-Datei.
             array = pd.DataFrame(columns=["state", "action", "value"])  # Beispiel: ["-1:0:-1:0", "up", -0.25],
             for (state, action), value in self._q.items():  # Fülle Panda DataFrame mit lernerfolgen der ML
                 array.loc[len(array)] = (f"{state[0]}:{state[1]}:{state[2]}:{state[3]}", action, f"{value:.2f}")
                 # print(f"Q-Wert für {state}, {action}: {value:.2f}")
             DataStorage().save_data_to_csv_file(array, self.data_file) # Speicher Array in CSV
+        elif self.ant_machine_learning == "Perzeptron":
+            data = []
+            for p in self._q: # Fülle Panda DataFrame mit lernerfolgen der ML
+                w_list, b = p.save()
+                data.append(w_list + [b])
+
+            df = pd.DataFrame(data, columns=["w0", "w1", "w2", "w3", "b"])
+            DataStorage().save_data_to_csv_file(df, self.data_file)
         else:
-            logger.info("Speichern ist nur bei Brain-Lernverfahren möglch")
+            logger.info("Bei diesem Lernverfahren nicht möglich.")
 
     def set_brain(self, values):
             """Setzt die Q-Werte."""
@@ -227,12 +300,17 @@ class Brain:        # Hier werden Die daten als auch die Methoden für ML bereit
             f"Status: {state}, Perz. Ausgabe: {brain_output}, Richtung: {action}, Belohnung: {reward}\n"
             f"Gehe Richtungen und Perz. durch:\n")
         for i, (p, d) in enumerate(zip(self._q, self.directions)):
-            self.log_collector.add_log_txt(
-                f"Index: {i}, Richtung:{d} ")
             if d == action:
                 self.log_collector.add_log_txt(
-                    f"--- Richtung gefunden. Übergebe an LERNE Methode ---")
+                    f"!!!Gefunden!!! bei Perz.: {i+1} mit Richtung: {d}. Übergebe an Perzeptron\n")
                 p.lerne(state, reward, brain_output[i])
+            else:
+                self.log_collector.add_log_txt(
+                    f"Perz.: {i+1} mit Richtung: {d}. Übergebe an Perzeptron\n")
+                p.lerne(state, brain_output[i], brain_output[i])
+            p.update_eta(self.output_error)
+        self.eta = sum(p.eta for p in self._q) / len(self._q)
+        # print(self.eta)
 
     def monte_carlo_calculate(self) -> None:
         """
@@ -307,15 +385,6 @@ class Brain:        # Hier werden Die daten als auch die Methoden für ML bereit
             output.append(self._q[i].berechne(state))
         return output
 
-    def out_brain(self):
-        """
-        Gibt die gesamte Q-Tabelle zurück.
-
-        Returns:
-            Dict[(state, action), value]
-        """
-        return self._q
-
 class Ant:
     """
     Die Ant-Klasse repräsentiert eine Ameise in der Simulation.
@@ -335,6 +404,7 @@ class Ant:
         self.opposites = {'up': 'down', 'down': 'up', 'left': 'right', 'right': 'left'}
         self.eps = 0.1                                  # Monte-Carlo ε-Soft Policy
         self.odor = 100                                 # Geruchsstärke
+        self.error_memory = 100
         self.odor_old = 0                               # Vorhergehender Geruch
         self.verkir = 0                                 # Schmerz/unwohlsein
         self.food_found = 0                             # Foods gefunden
@@ -449,6 +519,14 @@ class Ant:
         odor_right = int(max(-1, min(1, self.world.get_odor(self.pos_x + 1, self.pos_y) - self.odor)))  # Hole Geruch Rechts
         return odor_up, odor_down, odor_left, odor_right
 
+    def calculate_error(self, brain_output):
+        if sum(brain_output) == 1:
+            if self.error_memory > 1: self.error_memory -= 1
+        else:
+            if self.error_memory < 100: self.error_memory += 1
+
+        return self.error_memory
+
     def move_perzeptron(self):
         state = self.calculate_state()  # Aktueller Status
 
@@ -465,13 +543,14 @@ class Ant:
         #             f"Alte Bewertung: {d} Erschwert. Neue bewertung: {d}\n")
 
         brain_output = None
-        if random.random() < self.eps:  # Exploration: zufällige Richtung wählen
+        if random.random() < self.brain.eta:  # eps Exploration: zufällige Richtung wählen
             action = random.choice(self.directions)  # self.direction = ['up', 'down', 'left', 'right']
             self.log_collector.add_log_txt(
                 f"Ereignis Zufällig gehen eingetrofen\n"
                 f"Bisher die Besten aktionen: {self.directions}, Neue Richtungswahl: {action}\n")
         else:
             brain_output = self.brain.get_perzeptron_value(state)
+            self.brain.output_error = self.calculate_error(brain_output) # in %
             best_directions = []
             for i, o in enumerate(brain_output):
                 if o:
@@ -480,9 +559,9 @@ class Ant:
                 action = random.choice(best_directions)  # Richtung Höchster wert merken
             else:
                 action = random.choice(self.directions)
-                print("Random")
+                # print("Random")
             self.log_collector.add_log_txt(
-                f"Perzeptron Output: {brain_output}\n"
+                f"Perzeptron Output: {brain_output}, Fehlerrate: {self.brain.output_error}%\n"
                 f"Berechnete Richtungen: {best_directions} Gewählte Richtung: {action}\n"
                 f"Vorhergehende Richtungswahl: {self.last_direction} \n")
 
@@ -490,10 +569,10 @@ class Ant:
         self.last_direction = action
 
         self.odor = self.world.get_odor(self.pos_x, self.pos_y)  # Neuen Geruch holen
-        reward = -0.2  # Bestrafung
+        reward = 0  # Bestrafung
         for food in self.world.foods:  # Futter gefunden
             if food.get_position() == self.get_position():
-                reward += 10
+                reward = 100
                 self.log_collector.add_log_txt(f" --- !!!Essen gefunden!!! --- \n"
                                                f"Belohnung: {reward}\n")
         if brain_output is not None: self.brain.perzeptron_calculate(state, brain_output, action, reward)

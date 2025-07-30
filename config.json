@@ -23,7 +23,7 @@
     "Comment8": "Food settings",
     "FOOD_RANDOM_COLOR": "GREEN",
     "FOOD_FIXED_SIZE_COLOR": "GREEN",
-    "FOOD_RANGE": "20",
+    "FOOD_RANGE": "120",
     "RANDOM_FOOD": 0,
     "Comment9": "--- Test order ---",
     "TEST": true

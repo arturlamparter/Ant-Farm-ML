@@ -180,7 +180,7 @@ class TkSettingsController:                                             # HauptC
 
 
         # Konfiguration der Tk Elemente
-        self.tk_view.update_ent_set_food(100) # Setze Food Entry
+        self.tk_view.update_ent_set_food(20) # Setze Food Entry
         self.tk_view.update_ent_ant_add(1)  # Setze Ant Entry
 
         # --- Alles aktualisieren ---
@@ -365,7 +365,7 @@ class TkSettingsController:                                             # HauptC
         """
         self.world.world_pause = True
         ant = self.world.ants.get_ant(self.cmb_ant_selected)
-        if ant: ant.brain.save_q_to_csv()
+        if ant: ant.brain.save_brain_data()
 
     def update_settings_window(self):
         """
