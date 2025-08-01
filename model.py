@@ -78,87 +78,46 @@ class Perzeptron:
     def __init__(self, n, log_collector):
         self._w = []            # Gewichte
         self.n = n              # Eingängeanzahl
-        self._b = 1             # Bias
+        self._b = -1            # Bias
         self.log_collector = log_collector
         self.eta = 0.1
+        self.error_number = 1
         for _ in range(n):      # Initiire Gewichte
-            # w = 1
-            w = random.uniform(-1, 1)
+            w = np.random.normal(0, 1/np.sqrt(n))
             self._w.append(w)
 
     def update_eta(self, output_error):
-        if output_error > 10:
-            self.eta = 0.01 * output_error / 100
-        else:
-            self.eta = 0
         """
-        durchschnitt = sum(self._w) / len(self._w)
-        abw_liste = []
-        # max_abw = max(abs(w - durchschnitt) for w in self._w)
-        for w in self._w:
-            abweichung = abs(w - durchschnitt)
-            abw_liste.append(abweichung)
-        max_abw = max(abw_liste)
+        Selbst entwickelte Formel
+        """
+        self.eta = 1e-12 * (output_error ** 5.5)
 
-        # # Werte festlegen
-        # max_abw_clamp = 5
-        # min_eta = 0.001
-        # max_eta = 0.2
-        # # Begrenze max_abw auf 0 bis max_abw_clamp
-        # abw = min(max_abw, max_abw_clamp)
-        # abw = max(abw, 0)
-        # # Invers interpolieren (mehr Abweichung -> weniger eta)
-        # self.eta = max_eta - (abw / max_abw_clamp) * (max_eta - min_eta)
-
-        # max_eta = bei niedriger Abweichung
-        # min_eta = bei hoher Abweichung
-        max_eta = 0.2
-        min_eta = 0.00000001
-
-        # Kontrolliert die Steilheit (größer = schnellerer Abfall)
-        k = 1.0
-
-        self.eta = min_eta + (max_eta - min_eta) * math.exp(-k * max_abw)
-    """
-
-    def berechne(self, x_lst): # Liste z.B. [x, ...]
-        sum = 0
+    def berechne(self, x_lst):              # Liste z.B. [x, ...]
+        weighted_sum = 0
         for i, x in enumerate(x_lst):
-            sum += self._w[i] * x        # gewichtete Summe
-        sum += self._b                   # Bias zum Ergebnis hinzufügen
+            weighted_sum += self._w[i] * x           # gewichtete Summe
+        weighted_sum += self._b                      # Bias zum Ergebnis hinzufügen
 
-        if sum >= 30:                    # Schwellenwertaktivierung
-            return 1
-        else:
-            return 0
+        return 1 if weighted_sum >= 2 else 0        # Schwellenwertaktivierung
 
     def lerne(self, x_lst, y_actually, y_predicted): # epoch=0, max_epochs=100
-        lambda_reg = 0.001
-        # lambda_reg = Regularisierungsfaktor (Kleiner Wert -> Schwache Regularisierung)
         mistake = y_actually - y_predicted  # Fehlerberechnung  jetzt - vorhergesagt
-
-        # Reduziere die Lernrate mit fortschreitendem Training
-        # eta = eta / (1 + epoch / max_epochs)  # Lernrate verringern, je länger das Training läuft
-
         self.log_collector.add_log_txt(f"------Perzeptron-Berechnung--------\n"
             f"Übergebene Werte:\n"
             f"Eingabe: {x_lst}, Aktueller Wert: {y_actually}, Vorhergesagter Wert: {y_predicted}, Berechneter Fehler: {mistake}\n"
-            f"Werte vor Anpassung: {self._w[0]:.2f} {self._w[1]:.2f} {self._w[2]:.2f} {self._w[3]:.2f}, Bias: {self._b:.2f}, Eta: {self.eta}\n")
-
-        # self.update_eta()
-        # self.eta = 0.1
+            f"Werte vor Anpassung: {self._w[0]:.1f} {self._w[1]:.1f} {self._w[2]:.1f} {self._w[3]:.1f}, Bias: {self._b:.1f}, Eta: {self.eta:.4f}\n")
+        if mistake > 0:
+            self.error_number = 1
+        else:
+            self.error_number += 1
 
         for i in range(self.n):
-            self._w[i] += self.eta * mistake * x_lst[i] # Update der Gewichte
+            self._w[i] += self.eta * (mistake / self.error_number) * x_lst[i] # Update der Gewichte
 
         # Update des Bias
-        # self._b += self.eta * mistake
-        if self._b > -4 and self._b < 4: self._b += self.eta * mistake
-        # self._b += self.eta * mistake - lambda_reg * self._b
-        # round(self._b, 3)
-
+        self._b += 0.01 * self.eta * (mistake / self.error_number)
         self.log_collector.add_log_txt(
-            f"Werte nach Anpassung: {self._w[0]:.2f} {self._w[1]:.2f} {self._w[2]:.2f} {self._w[3]:.2f}, Bias: {self._b:.2f}, Eta: {self.eta}\n")
+            f"Werte nach Anpassung: {self._w[0]:.1f} {self._w[1]:.1f} {self._w[2]:.1f} {self._w[3]:.1f}, Bias: {self._b:.1f}, Eta: {self.eta:.4f}\n")
 
     def save(self):
         self._w = [round(w, 2) for w in self._w]
@@ -310,7 +269,6 @@ class Brain:        # Hier werden Die daten als auch die Methoden für ML bereit
                 p.lerne(state, brain_output[i], brain_output[i])
             p.update_eta(self.output_error)
         self.eta = sum(p.eta for p in self._q) / len(self._q)
-        # print(self.eta)
 
     def monte_carlo_calculate(self) -> None:
         """
@@ -535,13 +493,6 @@ class Ant:
             f"------------------------------------------------------------------------------------------\n"
             f"Geruchswahrnehmung Position: {self.odor}\nBerechneter Status:\n"
             f"Oben: {state[0]:+d}      Unten: {state[1]:+d}       Links: {state[2]:+d}       Rechts: {state[3]:+d}\n")
-
-        # for d in self.directions:  # Gehe alle 4 Richtungen durch
-        #     if self.opposites.get(d) == self.last_direction:  # Finde zurückgehen
-        #         self.log_collector.add_log_txt(
-        #             f"Berücksichtigung zurückgehen minimieren! Richtung: {self.last_direction}\n"
-        #             f"Alte Bewertung: {d} Erschwert. Neue bewertung: {d}\n")
-
         brain_output = None
         if random.random() < self.brain.eta:  # eps Exploration: zufällige Richtung wählen
             action = random.choice(self.directions)  # self.direction = ['up', 'down', 'left', 'right']
@@ -553,26 +504,33 @@ class Ant:
             self.brain.output_error = self.calculate_error(brain_output) # in %
             best_directions = []
             for i, o in enumerate(brain_output):
-                if o:
+                if o > 0:
                     best_directions.append(self.directions[i])
             if best_directions:
-                action = random.choice(best_directions)  # Richtung Höchster wert merken
+                action = random.choice(best_directions)                 # Richtung Höchster wert merken
+                if self.opposites.get(action) == self.last_direction:   # zurück gehen verboten
+                    directions = self.directions.copy()                 # Richtungen kopieren
+                    del directions[directions.index(action)]            # Zurück löschen
+                    action = random.choice(directions)                  # Richtung Zufällig ohne Zurück
+                    self.log_collector.add_log_txt(
+                        f"Ereignis Zurück gehen eingetrofen\n"
+                        f"Vorhergehende Richtungswahl: {self.last_direction}\n"
+                        f"Zurück gehen nicht erlaubt. Neue Richtungswahl: {action}\n")
             else:
                 action = random.choice(self.directions)
-                # print("Random")
             self.log_collector.add_log_txt(
                 f"Perzeptron Output: {brain_output}, Fehlerrate: {self.brain.output_error}%\n"
                 f"Berechnete Richtungen: {best_directions} Gewählte Richtung: {action}\n"
                 f"Vorhergehende Richtungswahl: {self.last_direction} \n")
 
-        self.move_direction(action)  # Bewegung ausführen
+        self.move_direction(action)                                 # Bewegung ausführen
         self.last_direction = action
 
-        self.odor = self.world.get_odor(self.pos_x, self.pos_y)  # Neuen Geruch holen
-        reward = 0  # Bestrafung
-        for food in self.world.foods:  # Futter gefunden
+        self.odor = self.world.get_odor(self.pos_x, self.pos_y)     # Neuen Geruch holen
+        reward = 0
+        for food in self.world.foods:                               # Futter gefunden
             if food.get_position() == self.get_position():
-                reward = 100
+                reward = 20
                 self.log_collector.add_log_txt(f" --- !!!Essen gefunden!!! --- \n"
                                                f"Belohnung: {reward}\n")
         if brain_output is not None: self.brain.perzeptron_calculate(state, brain_output, action, reward)

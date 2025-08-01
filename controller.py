@@ -168,7 +168,7 @@ class TkSettingsController:                                             # HauptC
         self.tk_view.set_btn_save_ants_callback(self.btn_save_ants)
 
         # Initialisiere Standardwerte und UI-Status
-        self.world.clock_tick = 10                                   # Simulationsgeschwindigkeit
+        self.world.clock_tick = 60                                   # Simulationsgeschwindigkeit
         self.world.world_pause = False
         self.tk_view.update_sld_speed(self.world.clock_tick)         # Setze Geschwindigkeits Slider
 
@@ -180,7 +180,7 @@ class TkSettingsController:                                             # HauptC
 
 
         # Konfiguration der Tk Elemente
-        self.tk_view.update_ent_set_food(20) # Setze Food Entry
+        self.tk_view.update_ent_set_food(100) # Setze Food Entry
         self.tk_view.update_ent_ant_add(1)  # Setze Ant Entry
 
         # --- Alles aktualisieren ---
