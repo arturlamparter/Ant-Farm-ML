@@ -141,7 +141,7 @@ class Brain:        # Hier werden Die daten als auch die Methoden für ML bereit
     key   = (state, action)
     value = float
     """
-    def __init__(self, name: str, ant_strategy, data=None, ant_machine_learning=None):
+    def __init__(self, name: str, ant_strategy, data=None, ant_machine_learning=None, csv_load = True):
         self.name = name
         self._q = {}        # z.B. {(state, action): value}  (action = 'up', 'down', 'left', 'right')
         self.episode = []   # z.B. [state, action, reward] z.B. [((-1, +1, 0, -1), 'down', -0.5)]
@@ -158,7 +158,7 @@ class Brain:        # Hier werden Die daten als auch die Methoden für ML bereit
         self.log_collector = LogCollector(self.name, self.ant_strategy, self.ant_machine_learning)
 
         if data is None:
-            self.set_brain(self.load_brain_data(self.data_file))
+            self.set_brain(self.load_brain_data(self.data_file if csv_load else None))
         else:
             self.set_brain(data)  # Wenn vorhanden setze Werte
 
@@ -197,12 +197,12 @@ class Brain:        # Hier werden Die daten als auch die Methoden für ML bereit
         Returns:
             Dict[(Tuple[int, int, int, int], str), float]: Q-Werte.
         """
-        if file is None:
-            logger.warning("Kein Dateipfad übergeben.")
-            return None
         if self.ant_machine_learning == "Keine" :
             return None
         elif self.ant_machine_learning == "Monte-Carlo" or self.ant_machine_learning == "Q-Learning":
+            if file is None:
+                logger.warning("Keine CSV Laden.")
+                return None
             data = DataStorage().load_data_from_csv_file(file)
             if data is None or data.empty:
                 data = pd.DataFrame(columns=["state", "action", "value"])
@@ -217,7 +217,11 @@ class Brain:        # Hier werden Die daten als auch die Methoden für ML bereit
                 q[(state, row[2])] = row[3]
             return q
         elif self.ant_machine_learning == "Perzeptron":
-            data = DataStorage().load_data_from_csv_file(file)
+            if file is None:
+                logger.warning("Keine CSV Laden.")
+                data = None
+            else:
+                data = DataStorage().load_data_from_csv_file(file)
             q = []
             if data is None or data.empty:
                 q = [Perzeptron(4, self.log_collector) for _ in range(4)]
@@ -744,7 +748,7 @@ class Ants:
         logger.error("Fehler: Ameise nicht vorhanden.")
         return None
 
-    def generate_ants(self, crowd: int, ant_strategy: str, ant_machine_learning: str = None) -> None:
+    def generate_ants(self, crowd, ant_strategy, ant_machine_learning = None, csv_load = True):
         """
         Erzeugt eine Anzahl von Ameisen mit gegebener Strategie (und ggf. ML-Verfahren).
 
@@ -756,7 +760,7 @@ class Ants:
             pos_x = random.randint(2, GRID_WIDTH - 2)
             pos_y = random.randint(2, GRID_HEIGHT - 2)
             name = str(len(self.world.ants) + 1).zfill(3)
-            brain = Brain(name=name, ant_strategy=ant_strategy, ant_machine_learning=ant_machine_learning)
+            brain = Brain(name=name, ant_strategy=ant_strategy, ant_machine_learning=ant_machine_learning, csv_load=csv_load)
             self._ants.append(Ant(self.world, pos_x, pos_y, brain, name=name))
 
     def show_ants(self):

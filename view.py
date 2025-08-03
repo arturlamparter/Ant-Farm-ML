@@ -96,6 +96,7 @@ class TkSettingsWindow(tk.Tk):
         # --- Tkinter-Variablen zur Anzeige von Werten ---
         self.ants_var = tk.StringVar()  # Anzeige: Anzahl Ameisen
         self.food_var = tk.StringVar()  # Anzeige: Anzahl Futter
+        self.chk_btn_csv_var = tk.IntVar(value=1)  # Checkbox state (0 = off, 1 = on)
 
         # --- Callbacks ---
         self.ant_machine_learning_set = None
@@ -187,12 +188,15 @@ class TkSettingsWindow(tk.Tk):
         # --- 6. REIHE: Machine Learning („Brain“) ---
         tk.Label(self, text="Brain:", anchor="w", font=("Arial", 20)).grid(row=9, column=0, columnspan=1, padx=5, sticky="w")
 
+        self.chk_btn_csv = tk.Checkbutton(self, text="CSV load", variable=self.chk_btn_csv_var)
+        self.chk_btn_csv.grid(row=9, column=1)
+
         self.cmb_ant_machine_learning = ttk.Combobox(self, width=12)  # Ermöglicht die Auswahl der Machine Learning Methode
-        self.cmb_ant_machine_learning.grid(row=9, column=1, columnspan=2, padx=5)
+        self.cmb_ant_machine_learning.grid(row=9, column=2, columnspan=1, padx=5)
         self.cmb_ant_machine_learning.bind("<<ComboboxSelected>>", lambda event: self.ant_machine_learning_set())
 
         self.cmb_selected_ant = ttk.Combobox(self, width=12)  # Ermöglicht die Auswahl der jeweiligen Ameise
-        self.cmb_selected_ant.grid(row=9, column=3, columnspan=2, padx=5)
+        self.cmb_selected_ant.grid(row=9, column=4, columnspan=1, padx=5)
         self.cmb_selected_ant.bind("<<ComboboxSelected>>", lambda event: self.selected_ant_set())
 
         # --- CSV Info / Platzhaltertext ---
@@ -303,6 +307,9 @@ class TkSettingsWindow(tk.Tk):
     def get_sld_speed_value(self):
         """Liest den Wert des Geschwindigkeitssliders (FPS)."""
         return self.sld_speed.get()
+
+    def get_csv_load(self):
+        return True if self.chk_btn_csv_var.get() == 1 else False
 
     def get_cmb_ant_machine_learning_value(self):
         """Liest die Auswahl aus der Machine Learning-Combobox."""

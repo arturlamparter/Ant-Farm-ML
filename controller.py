@@ -115,7 +115,7 @@ class PyGameController:
         """
         Aktualisiert die Anzeige der Ameisenanzahl in der Tkinter-Settings-UI.
         """
-        self.settings_controller.tk_view.update_ants_label(len(self.world.ants)) # Setze die Ameisenanzahl im Tk Settings
+        self.settings_controller.tk_settings_window.update_ants_label(len(self.world.ants)) # Setze die Ameisenanzahl im Tk Settings
 
 class TkSettingsController:                                             # HauptController (Tk Settings)
     """
@@ -126,23 +126,23 @@ class TkSettingsController:                                             # HauptC
 
     Attributes:
         world: Instanz der Welt mit allen Objekten (Ameisen, Futter).
-        tk_view: Die Tkinter-basierte Benutzeroberfläche für Settings.
+        tk_settings_window: Die Tkinter-basierte Benutzeroberfläche für Settings.
         py_game_controller: Steuerung der PyGame-Ansicht.
         machine_learning_methods: Liste der verfügbaren ML-Methoden.
         ant_strategy: Aktuelle Strategie der Ameisen (random, odor, brain).
         ant_machine_learning: Aktuelle ML-Methode für Ameisen.
     """
-    def __init__(self, tk_view):
+    def __init__(self, settings_window):
         """
         Initialisiert den Settings-Controller mit Welt und UI.
 
         Args:
             world: Die Welt mit Ameisen und Futter.
-            tk_view: Die Tkinter-Settings-Oberfläche.
+            settings_window: Die Tkinter-Settings-Oberfläche.
         """
         self.name = "SettingsController"
         self.world = model.World()                                      # Enthält alle Weltobjekte (Matrix)
-        self.tk_view = tk_view                                          # Tk Settings
+        self.tk_settings_window = settings_window                                          # Tk Settings
         self.py_game_controller = PyGameController(self, self.world)
         self.machine_learning_methods = ["Monte-Carlo", "Q-Learning", "Perzeptron"]
         self.ant_strategy = model.ANT_STRATEGY  # Unterschiedliche Food suche Strategien ["random" ,"odor", "brain"]
@@ -150,38 +150,38 @@ class TkSettingsController:                                             # HauptC
         self.cmb_ant_selected = "000"
 
         # Setze Callbacks für UI-Elemente auf Methoden
-        self.tk_view.set_show_odor_callback(self.starte_im_thread)
-        self.tk_view.set_btn_brain_callback(self.btn_brain)
-        self.tk_view.set_btn_step_cb(self.btn_step_click)
-        self.tk_view.set_btn_ant_settings_cb(self.btn_ant_settings)
-        self.tk_view.set_ant_add_callback(self.set_btn_ant_add)
-        self.tk_view.set_btn_food_settings_cb(self.btn_food_settings)
-        self.tk_view.set_food_callback(self.set_btn_food)
-        self.tk_view.set_btn_set_speed_callback(self.btn_set_speed)
-        self.tk_view.set_btn_pause_callback(self.btn_pause)
-        self.tk_view.set_btn_start_callback(self.btn_start)
-        self.tk_view.set_btn_random_callback(self.btn_random)
-        self.tk_view.set_btn_odor_callback(self.btn_odor)
-        self.tk_view.set_show_csv_btn_callback(self.show_csv_btn)
-        self.tk_view.set_btn_show_log_callback(self.btn_show_log)
-        self.tk_view.set_btn_reset(self.btn_reset)
-        self.tk_view.set_btn_save_ants_callback(self.btn_save_ants)
+        self.tk_settings_window.set_show_odor_callback(self.starte_im_thread)
+        self.tk_settings_window.set_btn_brain_callback(self.btn_brain)
+        self.tk_settings_window.set_btn_step_cb(self.btn_step_click)
+        self.tk_settings_window.set_btn_ant_settings_cb(self.btn_ant_settings)
+        self.tk_settings_window.set_ant_add_callback(self.set_btn_ant_add)
+        self.tk_settings_window.set_btn_food_settings_cb(self.btn_food_settings)
+        self.tk_settings_window.set_food_callback(self.set_btn_food)
+        self.tk_settings_window.set_btn_set_speed_callback(self.btn_set_speed)
+        self.tk_settings_window.set_btn_pause_callback(self.btn_pause)
+        self.tk_settings_window.set_btn_start_callback(self.btn_start)
+        self.tk_settings_window.set_btn_random_callback(self.btn_random)
+        self.tk_settings_window.set_btn_odor_callback(self.btn_odor)
+        self.tk_settings_window.set_show_csv_btn_callback(self.show_csv_btn)
+        self.tk_settings_window.set_btn_show_log_callback(self.btn_show_log)
+        self.tk_settings_window.set_btn_reset(self.btn_reset)
+        self.tk_settings_window.set_btn_save_ants_callback(self.btn_save_ants)
 
         # Initialisiere Standardwerte und UI-Status
         self.world.clock_tick = 60                                   # Simulationsgeschwindigkeit
         self.world.world_pause = False
-        self.tk_view.update_sld_speed(self.world.clock_tick)         # Setze Geschwindigkeits Slider
+        self.tk_settings_window.update_sld_speed(self.world.clock_tick)         # Setze Geschwindigkeits Slider
 
         # self.world.ant_machine_learning = "Q-Learning"  # Bestimte brain Methode ["Monte-Carlo", "Q-Learning"]
         # self.world.foods.set_food = 1                               # Anzahl der Essens Objekte setzen
         # self.world.foods.generate_food(self.world.foods.set_food)   # Generiere essen
         # self.world.ants.generate_ant(1, ant_strategy="brain", ant_machine_learning="Q-Learning")      # Einen mit Brain
-        self.tk_view.update_log_widget_text("Hier Werden die Internen Daten, der Ameise angezeigt.")
+        self.tk_settings_window.update_log_widget_text("Hier Werden die Internen Daten, der Ameise angezeigt.")
 
 
         # Konfiguration der Tk Elemente
-        self.tk_view.update_ent_set_food(100) # Setze Food Entry
-        self.tk_view.update_ent_ant_add(1)  # Setze Ant Entry
+        self.tk_settings_window.update_ent_set_food(100) # Setze Food Entry
+        self.tk_settings_window.update_ent_ant_add(1)  # Setze Ant Entry
 
         # --- Alles aktualisieren ---
         self.update_settings_window()       # Aktualisiere Labels
@@ -199,7 +199,7 @@ class TkSettingsController:                                             # HauptC
         Pausiert die Simulation und zeigt das Geruchsfeld mittels Matplotlib an.
         """
         self.world.world_pause = True                                              # Pausiere die Matrix
-        self.tk_view.after(0, lambda: view.FoodOdorPyPlot(self.world.world_array)) # Stelle PyPlot dar
+        self.tk_settings_window.after(0, lambda: view.FoodOdorPyPlot(self.world.world_array)) # Stelle PyPlot dar
 
     def btn_brain(self):
         """
@@ -214,7 +214,7 @@ class TkSettingsController:                                             # HauptC
         self.world.step = True
 
     def btn_ant_settings(self):
-        ant_settings_obj = view.AntSettingsWindow(self.tk_view)
+        ant_settings_obj = view.AntSettingsWindow(self.tk_settings_window)
         ant_settings_values = {"RANDOM_COLOR": model.RANDOM_COLOR,
                                "ODOR_COLOR": model.ODOR_COLOR,
                                "MONTE_CARLO_COLOR": model.MONTE_CARLO_COLOR,
@@ -229,16 +229,17 @@ class TkSettingsController:                                             # HauptC
         Fügt zusätzliche Ameisen entsprechend des Eingabefeldes hinzu,
         aktualisiert die Anzeige und gibt Debug-Infos aus, setzt Callback.
         """
-        self.world.ants.generate_ants(int(self.tk_view.get_ent_ant_add_value()), self.ant_strategy, self.ant_machine_learning)
+        self.world.ants.generate_ants(int(self.tk_settings_window.get_ent_ant_add_value()), self.ant_strategy,
+                                      self.ant_machine_learning, self.tk_settings_window.get_csv_load())
         if len(self.world.ants.show_ants()) > 0:            # Wenn Ameisen vorhanden sind
             self.cmb_ant_selected = self.world.ants.show_ants()[-1].name
-        self.tk_view.update_ent_ant_add(1)                              # Setze Ant Entry auf Eins
+        self.tk_settings_window.update_ent_ant_add(1)                              # Setze Ant Entry auf Eins
         self.update_settings_window()
         for ant in self.world.ants.show_ants():                         # Hier wird der Callback für Textfeld gesetzt
             ant.log_collector.update_log_collector_callback(self.update_log_collector_text)
 
     def btn_food_settings(self):
-        food_settings_obj = view.FoodSettingsWindow(self.tk_view)
+        food_settings_obj = view.FoodSettingsWindow(self.tk_settings_window)
         food_settings_values = {"FOOD_RANDOM_COLOR": model.FOOD_RANDOM_COLOR,
                                "FOOD_FIXED_SIZE_COLOR": model.FOOD_FIXED_SIZE_COLOR,
                                "FOOD_RANGE": model.FOOD_RANGE,
@@ -251,9 +252,9 @@ class TkSettingsController:                                             # HauptC
         Setzt die gewünschte Anzahl Futterobjekte, generiert bei Bedarf neues Futter,
         aktualisiert Geruchsmatrix und die Anzeige.
         """
-        if int(self.tk_view.get_ent_set_food_value()) > int(len(self.world.foods)): # Wenn die Zahl im entry gröser ist wie Foodobjekte
-            self.world.foods.generate_food(int(self.tk_view.get_ent_set_food_value()) - int(len(self.world.foods))) # Erstelle mehr Food
-        self.world.foods.set_food = int(self.tk_view.get_ent_set_food_value())      # Setze geforderte Essen Variable auf entry
+        if int(self.tk_settings_window.get_ent_set_food_value()) > int(len(self.world.foods)): # Wenn die Zahl im entry gröser ist wie Foodobjekte
+            self.world.foods.generate_food(int(self.tk_settings_window.get_ent_set_food_value()) - int(len(self.world.foods))) # Erstelle mehr Food
+        self.world.foods.set_food = int(self.tk_settings_window.get_ent_set_food_value())      # Setze geforderte Essen Variable auf entry
         self.world.update_odor_world()                                              # Aktualisiere Geruchsmatrix
         self.update_settings_window()                                               # Aktualisiere Window
         # self.tk_view.update_ent_set_food(self.world.foods.set_food)  # Setze Food entry
@@ -262,7 +263,7 @@ class TkSettingsController:                                             # HauptC
         """
         Setzt die Simulationsgeschwindigkeit anhand des Sliders.
         """
-        self.world.clock_tick = self.tk_view.get_sld_speed_value()    # Setze Geschwindigkeit von dem slider
+        self.world.clock_tick = self.tk_settings_window.get_sld_speed_value()    # Setze Geschwindigkeit von dem slider
 
     def btn_pause(self):
         """
@@ -335,7 +336,7 @@ class TkSettingsController:                                             # HauptC
         """
         self.world.world_pause = True           # Setze Pause
         self.world.ants.clear()                 # Lösche alle Ameisen
-        self.tk_view.update_ent_set_food(0)     # Setze Food entry auf Null
+        self.tk_settings_window.update_ent_set_food(0)     # Setze Food entry auf Null
         self.world.foods.clear()                # Lösche alle Foods
         self.set_btn_food()                     # Aktualisiere Foods
         self.world.world_pause = False          # Starte wieder
@@ -347,7 +348,7 @@ class TkSettingsController:                                             # HauptC
         anhand der ComboBox-Auswahl und aktualisiert die ComboBox.
         """
         self.ant_strategy = "brain"
-        self.ant_machine_learning = self.tk_view.get_cmb_ant_machine_learning_value() # Setze Machine Learning Methode
+        self.ant_machine_learning = self.tk_settings_window.get_cmb_ant_machine_learning_value() # Setze Machine Learning Methode
         self.update_settings_window()
 
     def cmb_selected_ant_set(self):
@@ -355,7 +356,7 @@ class TkSettingsController:                                             # HauptC
         Ändert die ausgewählte Ameise für die Textanzeige
         anhand der ComboBox-Auswahl und aktualisiert die ComboBox.
         """
-        self.cmb_ant_selected = self.tk_view.get_cmb_selected_ant_value()
+        self.cmb_ant_selected = self.tk_settings_window.get_cmb_selected_ant_value()
         self.update_log_collector_text()
 
     def btn_save_ants(self):
@@ -371,16 +372,16 @@ class TkSettingsController:                                             # HauptC
         """
         Aktualisiert die Grundlegende Labels im tk_view
         """
-        self.world.clock_tick = self.tk_view.get_sld_speed_value()  # Setze Geschwindigkeit von dem slider
-        self.tk_view.update_ants_label(len(self.world.ants))        # Setze Ameisenanzahl Label
-        self.tk_view.update_food_label(self.world.foods.set_food)   # Setze Futteranzahl Label
-        self.tk_view.update_lbl_set_brain(self.ant_strategy)        # Setze label für Strategie
-        self.tk_view.update_cmb_selected_ant([ant.name for ant in self.world.ants], self.cmb_ant_selected, self.cmb_selected_ant_set)
+        self.world.clock_tick = self.tk_settings_window.get_sld_speed_value()  # Setze Geschwindigkeit von dem slider
+        self.tk_settings_window.update_ants_label(len(self.world.ants))        # Setze Ameisenanzahl Label
+        self.tk_settings_window.update_food_label(self.world.foods.set_food)   # Setze Futteranzahl Label
+        self.tk_settings_window.update_lbl_set_brain(self.ant_strategy)        # Setze label für Strategie
+        self.tk_settings_window.update_cmb_selected_ant([ant.name for ant in self.world.ants], self.cmb_ant_selected, self.cmb_selected_ant_set)
         if self.ant_strategy == "brain":
-            self.tk_view.update_lbl_set_machine_learning(self.ant_machine_learning) # Setze label für Machine Learning
-            self.tk_view.update_cmb_ant_machine_learning(self.machine_learning_methods, self.ant_machine_learning, self.cmb_ant_machine_learning)
+            self.tk_settings_window.update_lbl_set_machine_learning(self.ant_machine_learning) # Setze label für Machine Learning
+            self.tk_settings_window.update_cmb_ant_machine_learning(self.machine_learning_methods, self.ant_machine_learning, self.cmb_ant_machine_learning)
         else:
-            self.tk_view.update_lbl_set_machine_learning(".")
+            self.tk_settings_window.update_lbl_set_machine_learning(".")
 
     def update_log_collector_text(self):
         """
@@ -389,10 +390,10 @@ class TkSettingsController:                                             # HauptC
         """
         if self.cmb_ant_selected == "None": # Wenn keine Ameisen vorhanden sind
             text = "!!!Keine Ameise ausgewählt!!!"
-            self.tk_view.update_log_widget_text(text)
+            self.tk_settings_window.update_log_widget_text(text)
         else:
             text = self.world.ants.show_ants()[int(self.cmb_ant_selected) - 1].log_collector.get_formatted_info()
-            self.tk_view.update_log_widget_text(text)
+            self.tk_settings_window.update_log_widget_text(text)
 
 # === Testpoint ===
 if __name__ == "__main__":
