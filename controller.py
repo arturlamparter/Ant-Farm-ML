@@ -165,6 +165,7 @@ class TkSettingsController:                                             # HauptC
         self.tk_settings_window.set_show_csv_btn_callback(self.show_csv_btn)
         self.tk_settings_window.set_btn_show_log_callback(self.btn_show_log)
         self.tk_settings_window.set_btn_reset(self.btn_reset)
+        self.tk_settings_window.set_btn_training_cb(self.btn_training)
         self.tk_settings_window.set_btn_save_ants_callback(self.btn_save_ants)
 
         # Initialisiere Standardwerte und UI-Status
@@ -341,6 +342,21 @@ class TkSettingsController:                                             # HauptC
         self.set_btn_food()                     # Aktualisiere Foods
         self.world.world_pause = False          # Starte wieder
         self.update_settings_window()
+
+    def btn_training(self):
+        brain_trainings_obj = view.BrainTrainingsWindow(self.tk_settings_window)
+        # brain_trainings_values = {"FOOD_RANDOM_COLOR": model.FOOD_RANDOM_COLOR,
+        #                         "FOOD_FIXED_SIZE_COLOR": model.FOOD_FIXED_SIZE_COLOR,
+        #                         "FOOD_RANGE": model.FOOD_RANGE,
+        #                         "RANDOM_FOOD": model.RANDOM_FOOD}
+        # food_settings_obj.update_settings(brain_trainings_values)
+        brain = model.Brain(name="001", ant_strategy="brain", ant_machine_learning="Perzeptron", csv_load=False)
+        brain_trainings_obj.set_btn_go_cb(lambda: self.test(brain_trainings_obj.get_settings(), brain))
+
+
+    def test(self, settings, brain):
+        brain.train_perzeptron(settings)
+        self.tk_settings_window.update_log_widget_text(brain.log_collector.get_formatted_info())
 
     def cmb_ant_machine_learning(self):
         """

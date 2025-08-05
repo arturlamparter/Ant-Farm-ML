@@ -19,6 +19,7 @@ Features of the Simulation:
 - Reward and Punishment System: Agents receive rewards for finding food or are punished for aimlessly wandering.
 - Generational Sorting: Successful agents reproduce, while less successful ones are removed from the simulation.
 - Customizable Parameters: Variables like food amount and odor strength can be easily adjusted.
+- Training the model with predefined data
 
 The application follows the **MVC** (Model-View-Controller) architecture and serves as a learning project for Artificial Intelligence.
 This structure makes it highly extensible and adaptable to future challenges.
@@ -45,6 +46,7 @@ Möglichkeiten der Simulation:
 - Belohnungs- und Bestrafungssystem: Agenten erhalten Belohnungen bei Essensfunden oder werden bestraft, wenn sie ziellos umherirren.
 - Generationssortierung möglich: Erfolgreiche Agenten vermehrt sich, weniger erfolgreiche werden entfernt.
 - Anpassbare Parameter: Variablen wie Essensmenge und Geruchsstärke können flexibel angepasst werden.
+- Training des Models mit vordefinierten Daten
 
 Die Anwendung folgt dem **MVC-Prinzip** (Model-View-Controller) und dient als Lernprojekt im Bereich Künstliche Intelligenz.
 Dadurch ist sie flexibel erweiterbar und anpassbar für zukünftige Herausforderungen.

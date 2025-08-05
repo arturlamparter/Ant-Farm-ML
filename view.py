@@ -96,7 +96,7 @@ class TkSettingsWindow(tk.Tk):
         # --- Tkinter-Variablen zur Anzeige von Werten ---
         self.ants_var = tk.StringVar()  # Anzeige: Anzahl Ameisen
         self.food_var = tk.StringVar()  # Anzeige: Anzahl Futter
-        self.chk_btn_csv_var = tk.IntVar(value=1)  # Checkbox state (0 = off, 1 = on)
+        self.chk_btn_csv_var = tk.IntVar(value=0)  # Checkbox state (0 = off, 1 = on)
 
         # --- Callbacks ---
         self.ant_machine_learning_set = None
@@ -113,8 +113,8 @@ class TkSettingsWindow(tk.Tk):
         self.btn_brain = tk.Button(self, text="Brain")              # Funktionaler Abzweig für Machine Learning
         self.btn_brain.grid(row=0, column=3, columnspan=1, padx=5)
 
-        tk.Button(self, text="Extern").grid(row=0, column=4, columnspan=1, padx=5)           # Zuckünftige Anwendung
-        tk.Button(self, text="Gesteuert").grid(row=0, column=5, columnspan=1, padx=5)      # Zuckünftige Anwendung
+        tk.Button(self, text="Ex(Empty)").grid(row=0, column=4, columnspan=1, padx=5)           # Zuckünftige Anwendung
+        tk.Button(self, text="Ge(Empty)").grid(row=0, column=5, columnspan=1, padx=5)      # Zuckünftige Anwendung
 
         # --- 2. REIHE: Geschwindigkeit / Steuerung ---
         tk.Label(self, text="Speed(FPS):", anchor="w", font=("Arial", 14)).grid(row=2, column=0, columnspan=2, padx=5, sticky="w")
@@ -176,10 +176,10 @@ class TkSettingsWindow(tk.Tk):
         self.btn_show_log = tk.Button(self, text="Show Log")
         self.btn_show_log.grid(row=8, column=2, columnspan=1, padx=5) # Zuckünftige Anwendung
 
-        btn = tk.Button(self, text="Program Y")
+        btn = tk.Button(self, text="Pr(Empty)")
         btn.grid(row=8, column=3, columnspan=1, padx=5) # Zuckünftige Anwendung
 
-        btn = tk.Button(self, text="Program Z")
+        btn = tk.Button(self, text="Pr(Empty)")
         btn.grid(row=8, column=4, columnspan=1, padx=5) # Zuckünftige Anwendung
 
         self.btn_reset = tk.Button(self, text="Reset")
@@ -218,13 +218,13 @@ class TkSettingsWindow(tk.Tk):
         scrollbar.config(command=self.text_widget.yview)          # Die Scrollbar mit einem Text Widget koppeln
 
         # --- Letzte Reihe: CSV speichern / Programm beenden ---
-        btn = tk.Button(self, text="Program")
-        btn.grid(row=20, column=0, columnspan=1, padx=5)  # Zuckünftige Anwendung
-        btn = tk.Button(self, text="Data") # Zuckünftige Anwendung
+        self.btn_training = tk.Button(self, text="Training")
+        self.btn_training.grid(row=20, column=0, columnspan=1, padx=5)  # Zuckünftige Anwendung
+        btn = tk.Button(self, text="Da(Empty)") # Zuckünftige Anwendung
         btn.grid(row=20, column=1, columnspan=1, padx=5)
-        btn = tk.Button(self, text="Goal") # Zuckünftige Anwendung
+        btn = tk.Button(self, text="Go(Empty)") # Zuckünftige Anwendung
         btn.grid(row=20, column=2, columnspan=1, padx=5)
-        btn = tk.Button(self, text="Time") # Zuckünftige Anwendung
+        btn = tk.Button(self, text="Ti(Empty)") # Zuckünftige Anwendung
         btn.grid(row=20, column=3, columnspan=1, padx=5)
 
         self.btn_save_ants = tk.Button(self, text="Save CSV") # Speichert die Machine Learning daten in der CSV
@@ -290,6 +290,9 @@ class TkSettingsWindow(tk.Tk):
     def set_btn_reset(self, callback):
         """Setzt den Callback für den 'Reset'-Button."""
         self.btn_reset.config(command=callback)
+
+    def set_btn_training_cb(self, cb):
+        self.btn_training.config(command=cb)
 
     def set_btn_save_ants_callback(self, callback):
         """Setzt den Callback für den 'Save CSV'-Button."""
@@ -494,6 +497,46 @@ class FoodSettingsWindow(tk.Toplevel):
                     "FOOD_FIXED_SIZE_COLOR": self.cmb_fixed_size.get(),
                     "FOOD_RANGE": self.ent.get(),
                     "RANDOM_FOOD": self.chk_btn_var.get()}
+        return settings
+
+class BrainTrainingsWindow(tk.Toplevel):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.name = "Training Settings"
+        self.title(self.name)
+        self.geometry("400x320")
+        # self.chk_btn_var = tk.IntVar(value=0)  # Checkbox state (0 = off, 1 = on)
+
+        ttk.Label(self, text="Train Perzeptron", font=("Arial", 16)).grid(row=0, column=0, columnspan=10, padx=10)
+        ttk.Label(self, text="Learning Data:", font=("Arial", 14)).grid(row=2, column=0, padx=10)
+
+        self.cmb_batch_file = ttk.Combobox(self, values=["learning_data.csv", "None"])
+        self.cmb_batch_file.grid(row=2, column=2, padx=10)
+        self.cmb_batch_file.set("learning_data.csv")
+
+        ttk.Label(self, text="Runs:", font=("Arial", 14)).grid(row=3, column=0, padx=10)
+        self.ent_epochs = tk.Entry(self)
+        self.ent_epochs.grid(row=3, column=2, padx=10)
+        self.ent_epochs.insert(0, "1")
+
+        ttk.Label(self, text="Target:", font=("Arial", 14)).grid(row=4, column=0, padx=10)
+        self.cmb_target_file = ttk.Combobox(self, values=["Perzeptron.csv", "None"])
+        self.cmb_target_file.grid(row=4, column=2, padx=10)
+        self.cmb_target_file.set("Perzeptron.csv")
+
+        ttk.Label(self, text="", font=("Arial", 16)).grid(row=10, column=0, columnspan=10, padx=10)
+        self.btn_go = ttk.Button(self, text="Go", padding=10)
+        self.btn_go.grid(row=12, column=0, padx=10)
+        ttk.Button(self, text="Exit", command=self.destroy, padding=10).grid(row=12, column=2, padx=10)
+
+
+    def set_btn_go_cb(self, cb):
+        self.btn_go.config(command=cb)
+
+    def get_settings(self):
+        settings = {"BATCH_FILE": self.cmb_batch_file.get(),
+                    "ENT_EPOCHS": self.ent_epochs.get(),
+                    "TARGET_FILE": self.cmb_target_file.get()}
         return settings
 
 class FoodOdorPyPlot:

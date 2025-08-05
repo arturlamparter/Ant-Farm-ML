@@ -102,8 +102,7 @@ class Perzeptron:
 
     def lerne(self, x_lst, y_actually, y_predicted): # epoch=0, max_epochs=100
         mistake = y_actually - y_predicted  # Fehlerberechnung  jetzt - vorhergesagt
-        self.log_collector.add_log_txt(f"------Perzeptron-Berechnung--------\n"
-            f"Übergebene Werte:\n"
+        self.log_collector.add_log_txt(f"Übergebene Werte:\n"
             f"Eingabe: {x_lst}, Aktueller Wert: {y_actually}, Vorhergesagter Wert: {y_predicted}, Berechneter Fehler: {mistake}\n"
             f"Werte vor Anpassung: {self._w[0]:.1f} {self._w[1]:.1f} {self._w[2]:.1f} {self._w[3]:.1f}, Bias: {self._b:.1f}, Eta: {self.eta:.4f}\n")
         if mistake > 0:
@@ -213,8 +212,8 @@ class Brain:        # Hier werden Die daten als auch die Methoden für ML bereit
             q = {}
             for row in data.itertuples():
                 state = tuple([int(x) for x in row.state.split(":")])
-                # print(f"{state}, {row[2]},  {row[3]}")
-                q[(state, row[2])] = row[3]
+                # print(f"{state}, {row.action},  {row.value}")
+                q[(state, row.action)] = row.value
             return q
         elif self.ant_machine_learning == "Perzeptron":
             if file is None:
@@ -234,14 +233,15 @@ class Brain:        # Hier werden Die daten als auch die Methoden für ML bereit
 
             return q
 
-    def save_brain_data(self):
+    def save_brain_data(self, file=None):
+        if file is None: file = self.data_file
         if self.ant_machine_learning == "Monte-Carlo" or self.ant_machine_learning == "Q-Learning":
             # Speichert das Q-Dictionary in eine CSV-Datei.
             array = pd.DataFrame(columns=["state", "action", "value"])  # Beispiel: ["-1:0:-1:0", "up", -0.25],
             for (state, action), value in self._q.items():  # Fülle Panda DataFrame mit lernerfolgen der ML
                 array.loc[len(array)] = (f"{state[0]}:{state[1]}:{state[2]}:{state[3]}", action, f"{value:.2f}")
                 # print(f"Q-Wert für {state}, {action}: {value:.2f}")
-            DataStorage().save_data_to_csv_file(array, self.data_file) # Speicher Array in CSV
+            DataStorage().save_data_to_csv_file(array, file) # Speicher Array in CSV
         elif self.ant_machine_learning == "Perzeptron":
             data = []
             for p in self._q: # Fülle Panda DataFrame mit lernerfolgen der ML
@@ -249,7 +249,7 @@ class Brain:        # Hier werden Die daten als auch die Methoden für ML bereit
                 data.append(w_list + [b])
 
             df = pd.DataFrame(data, columns=["w0", "w1", "w2", "w3", "b"])
-            DataStorage().save_data_to_csv_file(df, self.data_file)
+            DataStorage().save_data_to_csv_file(df, file)
         else:
             logger.info("Bei diesem Lernverfahren nicht möglich.")
 
@@ -257,19 +257,21 @@ class Brain:        # Hier werden Die daten als auch die Methoden für ML bereit
             """Setzt die Q-Werte."""
             if values: self._q = values
 
-    def perzeptron_calculate(self, state, brain_output, action, reward):
+    def perzeptron_calculate(self, state, action, reward):
+        brain_output = self.get_perzeptron_value(state)
         self.log_collector.add_log_txt(f"------Perzeptron Brain Berechnung--------\n")
         self.log_collector.add_log_txt(f"Übergebene Werte:\n"
             f"Status: {state}, Perz. Ausgabe: {brain_output}, Richtung: {action}, Belohnung: {reward}\n"
-            f"Gehe Richtungen und Perz. durch:\n")
+            f"Gehe Richtungen und Perz. durch:\n"
+            f"------Perzeptron-Berechnung--------\n")
         for i, (p, d) in enumerate(zip(self._q, self.directions)):
             if d == action:
                 self.log_collector.add_log_txt(
-                    f"!!!Gefunden!!! bei Perz.: {i+1} mit Richtung: {d}. Übergebe an Perzeptron\n")
+                    f"!!!Gefunden!!! bei Perz.: {i+1} mit Richtung: {d}.\n ---Übergebe an Perzeptron---\n")
                 p.lerne(state, reward, brain_output[i])
             else:
                 self.log_collector.add_log_txt(
-                    f"Perz.: {i+1} mit Richtung: {d}. Übergebe an Perzeptron\n")
+                    f"Perz.: {i+1} mit Richtung: {d}.\n ---Übergebe an Perzeptron---\n")
                 p.lerne(state, brain_output[i], brain_output[i])
             p.update_eta(self.output_error)
         self.eta = sum(p.eta for p in self._q) / len(self._q)
@@ -346,6 +348,19 @@ class Brain:        # Hier werden Die daten als auch die Methoden für ML bereit
         for i, o in enumerate(state):
             output.append(self._q[i].berechne(state))
         return output
+
+    def train_perzeptron(self, settings):
+        learning_data = DataStorage.load_data_from_csv_file(settings["BATCH_FILE"])
+        self.log_collector.add_log_txt(f"Starte Training mit {settings['BATCH_FILE']}\n")
+        for i in range(int(settings["ENT_EPOCHS"])):
+            self.log_collector.add_log_txt(f"Durchlauf Nummer: {i}\n")
+            for row in learning_data.itertuples(index=False): # data training
+                state = tuple([int(x) for x in row.state.split(":")])
+                self.log_collector.add_log_txt(f"Datensatz: {state}, Aktion: {row.action}, Belohnung: 10\n")
+                self.perzeptron_calculate(state, row.action, reward=10)
+        self.log_collector.add_log_txt(f"Speichere Ergebnisse in: {settings['TARGET_FILE']}\n")
+        self.save_brain_data(settings["TARGET_FILE"])
+
 
 class Ant:
     """
@@ -497,7 +512,6 @@ class Ant:
             f"------------------------------------------------------------------------------------------\n"
             f"Geruchswahrnehmung Position: {self.odor}\nBerechneter Status:\n"
             f"Oben: {state[0]:+d}      Unten: {state[1]:+d}       Links: {state[2]:+d}       Rechts: {state[3]:+d}\n")
-        brain_output = None
         if random.random() < self.brain.eta:  # eps Exploration: zufällige Richtung wählen
             action = random.choice(self.directions)  # self.direction = ['up', 'down', 'left', 'right']
             self.log_collector.add_log_txt(
@@ -537,7 +551,7 @@ class Ant:
                 reward = 20
                 self.log_collector.add_log_txt(f" --- !!!Essen gefunden!!! --- \n"
                                                f"Belohnung: {reward}\n")
-        if brain_output is not None: self.brain.perzeptron_calculate(state, brain_output, action, reward)
+        self.brain.perzeptron_calculate(state, action, reward)
         self.log_collector.add_log_txt(f" --- !!!Bewegung!!! --- \n"
                                        f"Neuer Positionsgeruch:{self.odor}\n")
 

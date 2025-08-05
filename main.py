@@ -9,7 +9,7 @@ Autor:       Artur Lamparter <arturlamparter@web.de>
 Projektziel: Demonstration KI-gesteuerter Agenten im simulierten Umfeld
 """
 __author__ = "Artur Lamparter <arturlamparter@web.de>"
-__version__ = "0.2.7" #git tag v0.2.7
+__version__ = "0.2.8"
 
 # --- Externe Modulintegration ---
 import sys
