@@ -81,6 +81,7 @@ class Perzeptron:
         self._b = -1            # Bias
         self.log_collector = log_collector
         self.eta = 0.1
+        self.alpha = 0.01
         self.error_number = 1
         for _ in range(n):      # Initiire Gewichte
             w = np.random.normal(0, 1/np.sqrt(n))
@@ -92,13 +93,24 @@ class Perzeptron:
         """
         self.eta = 1e-12 * (output_error ** 5.5)
 
-    def berechne(self, x_lst):              # Liste z.B. [x, ...]
+    def normalisieren_nach_leaky_relu(self, value):
+        # Anwendung von Leaky ReLU auf den Eingabewert oder die gewichtete Summe
+        if value > 0:
+            return value  # ReLU-Verhalten für positive Eingaben
+        else:
+            return self.alpha * value  # Leaky ReLU für negative Eingaben
+
+    def berechne(self, x_lst):  # Liste z.B. [x, ...]
         weighted_sum = 0
         for i, x in enumerate(x_lst):
-            weighted_sum += self._w[i] * x           # gewichtete Summe
-        weighted_sum += self._b                      # Bias zum Ergebnis hinzufügen
+            # Anwendung von Leaky ReLU auf die Eingabewerte
+            x_transformed = self.normalisieren_nach_leaky_relu(x)
+            weighted_sum += self._w[i] * x_transformed  # gewichtete Summe unter Berücksichtigung der transformierten Eingabewerte
+        weighted_sum += self._b  # Bias zum Ergebnis hinzufügen
 
-        return 1 if weighted_sum >= 2 else 0        # Schwellenwertaktivierung
+        # Anwendung von Leaky ReLU auf die gewichtete Summe
+        # return self.normalisieren_nach_leaky_relu(weighted_sum)  # Leaky ReLU auf die gewichtete Summe
+        return 1 if weighted_sum >= 0.5 else 0  # Schwellenwertaktivierung
 
     def lerne(self, x_lst, y_actually, y_predicted): # epoch=0, max_epochs=100
         mistake = y_actually - y_predicted  # Fehlerberechnung  jetzt - vorhergesagt
@@ -352,14 +364,14 @@ class Brain:        # Hier werden Die daten als auch die Methoden für ML bereit
     def train_perzeptron(self, settings):
         learning_data = DataStorage.load_data_from_csv_file(settings["BATCH_FILE"])
         self.log_collector.add_log_txt(f"Starte Training mit {settings['BATCH_FILE']}\n")
-        for i in range(int(settings["ENT_EPOCHS"])):
-            self.log_collector.add_log_txt(f"Durchlauf Nummer: {i}\n")
+        for iteration  in range(int(settings["ENT_EPOCHS"])):
+            self.log_collector.add_log_txt(f"Iterationsnumber: {iteration}\n")
             for row in learning_data.itertuples(index=False): # data training
                 state = tuple([int(x) for x in row.state.split(":")])
                 self.log_collector.add_log_txt(f"Datensatz: {state}, Aktion: {row.action}, Belohnung: 10\n")
                 self.perzeptron_calculate(state, row.action, reward=10)
-        self.log_collector.add_log_txt(f"Speichere Ergebnisse in: {settings['TARGET_FILE']}\n")
-        self.save_brain_data(settings["TARGET_FILE"])
+        # self.log_collector.add_log_txt(f"Speichere Ergebnisse in: {settings['TARGET_FILE']}\n")
+        # self.save_brain_data(settings["TARGET_FILE"])
 
 
 class Ant:
@@ -386,6 +398,7 @@ class Ant:
         self.verkir = 0                                 # Schmerz/unwohlsein
         self.food_found = 0                             # Foods gefunden
         self.period = 0                                 # Schritte gegangen
+        self.event_keysym_direction = None              # Selbst gehen
         if brain and isinstance(brain, Brain):          # Wenn Brain korrekt übergeben wird
             self.brain = brain # Enthält das Objekt     # Setzen
             self.log_collector = self.brain.log_collector
@@ -478,6 +491,8 @@ class Ant:
             self.move_brain_q_learning()
         elif self.brain.ant_strategy == "brain" and self.brain.ant_machine_learning == "Perzeptron":
             self.move_perzeptron()
+        elif self.brain.ant_strategy == "self":
+            pass
         else:
             logger.critical(f"Keine korrekte move Strategie. \n"
                             f"Strategie:{self.brain.ant_strategy}, ML:{self.brain.ant_machine_learning}")
@@ -497,12 +512,26 @@ class Ant:
         return odor_up, odor_down, odor_left, odor_right
 
     def calculate_error(self, brain_output):
+        # if 1 <= sum(brain_output) <= 2:
         if sum(brain_output) == 1:
             if self.error_memory > 1: self.error_memory -= 1
         else:
             if self.error_memory < 100: self.error_memory += 1
 
         return self.error_memory
+
+    def move_self(self, event):
+        self.event_keysym_direction = event.keysym.lower()
+        if self.brain.ant_strategy == "self":
+            self.move_direction(self.event_keysym_direction)
+            self.log_collector.add_log_txt(
+                f"Position: X:{self.pos_x}, Y:{self.pos_y}, Energie:{self.orka}, Futtergefunden:{self.food_found}\n"
+                f"Vorgegebene Richtung: {event.keysym.lower()}\n")
+            self.log_collector.add_new_period()
+
+        self.world.world_pause = False
+        self.world.step = True                  # Schrittweise bewegung
+
 
     def move_perzeptron(self):
         state = self.calculate_state()  # Aktueller Status
@@ -710,8 +739,14 @@ class Ant:
 
         Diese Methode ignoriert Geruch, Strategie oder andere Faktoren.
         """
-        self.move_direction(random.choice(self.directions))
-        self.log_collector.add_log_txt(f"Position: X:{self.pos_x}, Y:{self.pos_y}, Energie:{self.orka}, Futtergefunden:{self.food_found}\n")
+        direction = self.event_keysym_direction
+        if direction is None:
+            direction = random.choice(self.directions)
+        else:
+            self.event_keysym_direction = None
+        self.move_direction(direction)
+        self.log_collector.add_log_txt(f"Position: X:{self.pos_x}, Y:{self.pos_y}, Energie:{self.orka}, Futtergefunden:{self.food_found}\n"
+                                       f"Bewegungsrichtung Richtung: {direction}")
         self.log_collector.add_new_period()
 
 class Ants:
@@ -997,7 +1032,7 @@ class LogCollector:
         Returns:
             str: Logtext der aktuellen Periode.
         """
-        return self._periods[self.period-1]     # -1 Muss bleiben. !!!Wichtig!!!
+        return self._periods[self.period]     # -1 Muss bleiben. !!!Wichtig!!! ???Warum???
 
     def get_all_periods(self):
         """

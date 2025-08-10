@@ -103,8 +103,10 @@ class TkSettingsWindow(tk.Tk):
         self.selected_ant_set = None
 
         # --- OBERSTE REIHE: Strategiewahl ---
-        tk.Label(self, text="Ant Strategie:", anchor="w", font=("Arial", 14)).grid(row=0, column=0, columnspan=1, padx=5)
-        self.btn_random = tk.Button(self, text="Zufall")            # Zufallsbewegung (um 1 Position)
+        self.label = tk.Label(self, text="Ant Strategie:", anchor="w", font=("Arial", 14))
+        self.label.grid(row=0, column=0, columnspan=1, padx=5)
+
+        self.btn_random = tk.Button(self, text="Random")            # Zufallsbewegung (um 1 Position)
         self.btn_random.grid(row=0, column=1, columnspan=1, padx=5)
 
         self.btn_odor = tk.Button(self, text="Odor")                # Folgen dem Geruch(Geruchsorientiert)
@@ -113,7 +115,9 @@ class TkSettingsWindow(tk.Tk):
         self.btn_brain = tk.Button(self, text="Brain")              # Funktionaler Abzweig für Machine Learning
         self.btn_brain.grid(row=0, column=3, columnspan=1, padx=5)
 
-        tk.Button(self, text="Ex(Empty)").grid(row=0, column=4, columnspan=1, padx=5)           # Zuckünftige Anwendung
+        self.btn_self = tk.Button(self, text="Self")
+        self.btn_self.grid(row=0, column=4, columnspan=1, padx=5)           # Ich Steuere
+
         tk.Button(self, text="Ge(Empty)").grid(row=0, column=5, columnspan=1, padx=5)      # Zuckünftige Anwendung
 
         # --- 2. REIHE: Geschwindigkeit / Steuerung ---
@@ -234,17 +238,20 @@ class TkSettingsWindow(tk.Tk):
         btn.grid(row=20, column=5, columnspan=1, padx=5)
 
     # --- CALLBACK-VERKNÜPFUNGEN (View <- Controller) ---
-    def set_btn_random_callback(self, callback):
+    def set_btn_random_cb(self, cb):
         """Setzt den Callback für die Zufallsstrategie."""
-        self.btn_random.config(command=callback)
+        self.btn_random.config(command=cb)
 
-    def set_btn_odor_callback(self, callback):
+    def set_btn_odor_cb(self, cb):
         """Setzt den Callback für die Geruchsstrategie."""
-        self.btn_odor.config(command=callback)
+        self.btn_odor.config(command=cb)
 
-    def set_btn_brain_callback(self, callback):
+    def set_btn_brain_cb(self, cb):
         """Setzt den Callback für die Brain/Machine-Learning-Strategie."""
-        self.btn_brain.config(command=callback)
+        self.btn_brain.config(command=cb)
+
+    def set_btn_self_cb(self, cb):
+        self.btn_self.config(command=cb)
 
     def set_btn_step_cb(self, cb):
         self.btn_step.config(command=cb)
@@ -318,8 +325,9 @@ class TkSettingsWindow(tk.Tk):
         """Liest die Auswahl aus der Machine Learning-Combobox."""
         return self.cmb_ant_machine_learning.get()
 
-    def get_cmb_selected_ant_value(self):
+    def get_cmb_selected_ant(self):
         """Liest die Auswahl aus der Ameisenauswahl-Combobox."""
+        self.label.focus()          # Notlösung um den Fokus zu enfernen
         return self.cmb_selected_ant.get()
 
     # --- ANZEIGEN UND EINTRÄGE SETZEN ---
@@ -504,8 +512,7 @@ class BrainTrainingsWindow(tk.Toplevel):
         super().__init__(parent)
         self.name = "Training Settings"
         self.title(self.name)
-        self.geometry("400x320")
-        # self.chk_btn_var = tk.IntVar(value=0)  # Checkbox state (0 = off, 1 = on)
+        self.geometry("400x170")
 
         ttk.Label(self, text="Train Perzeptron", font=("Arial", 16)).grid(row=0, column=0, columnspan=10, padx=10)
         ttk.Label(self, text="Learning Data:", font=("Arial", 14)).grid(row=2, column=0, padx=10)
@@ -519,24 +526,17 @@ class BrainTrainingsWindow(tk.Toplevel):
         self.ent_epochs.grid(row=3, column=2, padx=10)
         self.ent_epochs.insert(0, "1")
 
-        ttk.Label(self, text="Target:", font=("Arial", 14)).grid(row=4, column=0, padx=10)
-        self.cmb_target_file = ttk.Combobox(self, values=["Perzeptron.csv", "None"])
-        self.cmb_target_file.grid(row=4, column=2, padx=10)
-        self.cmb_target_file.set("Perzeptron.csv")
-
         ttk.Label(self, text="", font=("Arial", 16)).grid(row=10, column=0, columnspan=10, padx=10)
         self.btn_go = ttk.Button(self, text="Go", padding=10)
         self.btn_go.grid(row=12, column=0, padx=10)
         ttk.Button(self, text="Exit", command=self.destroy, padding=10).grid(row=12, column=2, padx=10)
-
 
     def set_btn_go_cb(self, cb):
         self.btn_go.config(command=cb)
 
     def get_settings(self):
         settings = {"BATCH_FILE": self.cmb_batch_file.get(),
-                    "ENT_EPOCHS": self.ent_epochs.get(),
-                    "TARGET_FILE": self.cmb_target_file.get()}
+                    "ENT_EPOCHS": self.ent_epochs.get()}
         return settings
 
 class FoodOdorPyPlot:

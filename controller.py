@@ -150,8 +150,10 @@ class TkSettingsController:                                             # HauptC
         self.cmb_ant_selected = "000"
 
         # Setze Callbacks für UI-Elemente auf Methoden
+        self.tk_settings_window.set_btn_random_cb(self.btn_random)
         self.tk_settings_window.set_show_odor_callback(self.starte_im_thread)
-        self.tk_settings_window.set_btn_brain_callback(self.btn_brain)
+        self.tk_settings_window.set_btn_brain_cb(self.btn_brain)
+        self.tk_settings_window.set_btn_self_cb(self.btn_self)
         self.tk_settings_window.set_btn_step_cb(self.btn_step_click)
         self.tk_settings_window.set_btn_ant_settings_cb(self.btn_ant_settings)
         self.tk_settings_window.set_ant_add_callback(self.set_btn_ant_add)
@@ -160,8 +162,7 @@ class TkSettingsController:                                             # HauptC
         self.tk_settings_window.set_btn_set_speed_callback(self.btn_set_speed)
         self.tk_settings_window.set_btn_pause_callback(self.btn_pause)
         self.tk_settings_window.set_btn_start_callback(self.btn_start)
-        self.tk_settings_window.set_btn_random_callback(self.btn_random)
-        self.tk_settings_window.set_btn_odor_callback(self.btn_odor)
+        self.tk_settings_window.set_btn_odor_cb(self.btn_odor)
         self.tk_settings_window.set_show_csv_btn_callback(self.show_csv_btn)
         self.tk_settings_window.set_btn_show_log_callback(self.btn_show_log)
         self.tk_settings_window.set_btn_reset(self.btn_reset)
@@ -202,6 +203,22 @@ class TkSettingsController:                                             # HauptC
         self.world.world_pause = True                                              # Pausiere die Matrix
         self.tk_settings_window.after(0, lambda: view.FoodOdorPyPlot(self.world.world_array)) # Stelle PyPlot dar
 
+    def btn_random(self):
+        """
+        Setzt die Ameisenstrategie auf "random" und aktualisiert das UI.
+        """
+        self.ant_strategy = "random"
+        self.ant_machine_learning = "Keine"
+        self.update_settings_window()
+
+    def btn_odor(self):
+        """
+        Setzt die Ameisenstrategie auf "odor" (Geruch folgen) und aktualisiert das UI.
+        """
+        self.ant_strategy = "odor"
+        self.ant_machine_learning = "Keine"
+        self.update_settings_window()
+
     def btn_brain(self):
         """
         Setzt die Ameisenstrategie auf "brain" (ML-basiert) und aktualisiert das UI.
@@ -210,9 +227,29 @@ class TkSettingsController:                                             # HauptC
         self.ant_machine_learning = "Monte-Carlo"
         self.update_settings_window()
 
+    def btn_self(self):
+        self.ant_strategy = "self"
+        self.ant_machine_learning = "Keine"
+        self.update_settings_window()
+
     def btn_step_click(self):
         self.world.world_pause = False
         self.world.step = True
+
+    def btn_pause(self):
+        """
+        Schaltet die Pause um (an/aus).
+        """
+        if self.world.world_pause:
+            self.world.world_pause = False  # Hebe Pause auf
+        else:
+            self.world.world_pause = True  # Setze Pause
+
+    def btn_set_speed(self):
+        """
+        Setzt die Simulationsgeschwindigkeit anhand des Sliders.
+        """
+        self.world.clock_tick = self.tk_settings_window.get_sld_speed_value()  # Setze Geschwindigkeit von dem slider
 
     def btn_ant_settings(self):
         ant_settings_obj = view.AntSettingsWindow(self.tk_settings_window)
@@ -238,6 +275,7 @@ class TkSettingsController:                                             # HauptC
         self.update_settings_window()
         for ant in self.world.ants.show_ants():                         # Hier wird der Callback für Textfeld gesetzt
             ant.log_collector.update_log_collector_callback(self.update_log_collector_text)
+        self.cmb_selected_ant_set()
 
     def btn_food_settings(self):
         food_settings_obj = view.FoodSettingsWindow(self.tk_settings_window)
@@ -260,21 +298,6 @@ class TkSettingsController:                                             # HauptC
         self.update_settings_window()                                               # Aktualisiere Window
         # self.tk_view.update_ent_set_food(self.world.foods.set_food)  # Setze Food entry
 
-    def btn_set_speed(self):
-        """
-        Setzt die Simulationsgeschwindigkeit anhand des Sliders.
-        """
-        self.world.clock_tick = self.tk_settings_window.get_sld_speed_value()    # Setze Geschwindigkeit von dem slider
-
-    def btn_pause(self):
-        """
-        Schaltet die Pause um (an/aus).
-        """
-        if self.world.world_pause:
-            self.world.world_pause = False  # Hebe Pause auf
-        else:
-            self.world.world_pause = True   # Setze Pause
-
     def btn_start(self):
         """
         Startet die Simulation, fügt Ameisen und Futter gemäß Vorgabe hinzu
@@ -288,22 +311,6 @@ class TkSettingsController:                                             # HauptC
         if not self.py_game_controller.running:         # Wenn schon läuft, nicht starten
             self.py_game_controller.running = True
             self.py_game_controller.start_daemon()      # Starte PyGame als Daemon
-
-    def btn_random(self):
-        """
-        Setzt die Ameisenstrategie auf "random" und aktualisiert das UI.
-        """
-        self.ant_strategy = "random"
-        self.ant_machine_learning = "Keine"
-        self.update_settings_window()
-
-    def btn_odor(self):
-        """
-        Setzt die Ameisenstrategie auf "odor" (Geruch folgen) und aktualisiert das UI.
-        """
-        self.ant_strategy = "odor"
-        self.ant_machine_learning = "Keine"
-        self.update_settings_window()
 
     def show_csv_btn(self):
         """
@@ -345,18 +352,18 @@ class TkSettingsController:                                             # HauptC
 
     def btn_training(self):
         brain_trainings_obj = view.BrainTrainingsWindow(self.tk_settings_window)
-        # brain_trainings_values = {"FOOD_RANDOM_COLOR": model.FOOD_RANDOM_COLOR,
-        #                         "FOOD_FIXED_SIZE_COLOR": model.FOOD_FIXED_SIZE_COLOR,
-        #                         "FOOD_RANGE": model.FOOD_RANGE,
-        #                         "RANDOM_FOOD": model.RANDOM_FOOD}
-        # food_settings_obj.update_settings(brain_trainings_values)
-        brain = model.Brain(name="001", ant_strategy="brain", ant_machine_learning="Perzeptron", csv_load=False)
-        brain_trainings_obj.set_btn_go_cb(lambda: self.test(brain_trainings_obj.get_settings(), brain))
+        brain_trainings_obj.set_btn_go_cb(lambda: self.train_brain(brain_trainings_obj.get_settings()))
 
-
-    def test(self, settings, brain):
-        brain.train_perzeptron(settings)
-        self.tk_settings_window.update_log_widget_text(brain.log_collector.get_formatted_info())
+    def train_brain(self, settings):
+        ant = self.world.ants.get_ant(self.tk_settings_window.get_cmb_selected_ant())
+        if ant:
+            if ant.brain.ant_machine_learning == "Perzeptron":
+                ant.brain.train_perzeptron(settings)
+                self.tk_settings_window.update_log_widget_text(ant.brain.log_collector.get_formatted_info())
+            else:
+                model.logger.warning("Nur mit Perzeptron ML möglich!")
+        else:
+            model.logger.warning("Erst eine Ameise hinzufügen!")
 
     def cmb_ant_machine_learning(self):
         """
@@ -372,8 +379,15 @@ class TkSettingsController:                                             # HauptC
         Ändert die ausgewählte Ameise für die Textanzeige
         anhand der ComboBox-Auswahl und aktualisiert die ComboBox.
         """
-        self.cmb_ant_selected = self.tk_settings_window.get_cmb_selected_ant_value()
+        self.cmb_ant_selected = self.tk_settings_window.get_cmb_selected_ant()
         self.update_log_collector_text()
+
+        # Tastenereignisse verbinden
+        ant = self.world.ants.get_ant(self.cmb_ant_selected)
+        self.tk_settings_window.bind("<Left>", ant.move_self)  # Pfeiltaste links
+        self.tk_settings_window.bind("<Right>", ant.move_self)  # Pfeiltaste rechts
+        self.tk_settings_window.bind("<Up>", ant.move_self)  # Pfeiltaste oben
+        self.tk_settings_window.bind("<Down>", ant.move_self)  # Pfeiltaste unten
 
     def btn_save_ants(self):
         """
