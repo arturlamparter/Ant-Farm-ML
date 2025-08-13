@@ -1,5 +1,6 @@
 # Ant Simulation
 
+![Preview Image](preview.jpg)
 This project is an **Ant Simulation** with a graphical user interface.
 The aim of the software is to demonstrate the principles of Machine Learning (ML) in an engaging and interactive way for students. The simulation currently includes the following algorithms:
 
@@ -8,7 +9,7 @@ The aim of the software is to demonstrate the principles of Machine Learning (ML
 - Monte Carlo Method: Agents learn and navigate based on Q-values (Monte Carlo-based decision-making).
 - Q-Learning: Agents learn through rewards and punishments (based on 4 state values).
 - Perceptron: A neural network consisting of 4 perceptrons with 4 input values each.
-- Neural Network: (Planned, implementation depending on project interest).
+- Neural Network: (torch v2.3.1+cpu).
 
 Features of the Simulation:
 
@@ -35,7 +36,7 @@ und interaktiv darzustellen. Die Simulation umfasst derzeit folgende Algorithmen
 - Monte-Carlo-Verfahren: Agenten lernen und navigieren basierend auf Q-Werten (Monte Carlo-basierte Entscheidungsfindung)
 - Q-Learning: Agenten lernen durch Belohnungen und Bestrafung (auf basis von 4 Zustandswerten)
 - Perzeptron: Ein künstliches Netzwerk aus 4 Pereptronen mit jeweils 4 Eingabewerten.
-- Neurales Netzwerk: (In Planung, Umsetzung abhängig vom Interesse am Projekt)
+- Neurales Netzwerk: (torch v2.3.1+cpu)
 
 Möglichkeiten der Simulation:
 
@@ -55,7 +56,7 @@ Dadurch ist sie flexibel erweiterbar und anpassbar für zukünftige Herausforder
 
 ## Version
 
-0.2.8
+0.3.0
 
 ---
 

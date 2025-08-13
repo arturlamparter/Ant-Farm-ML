@@ -15,6 +15,10 @@ import json
 import math
 import logging
 from collections import deque
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
 
 import main
 
@@ -73,6 +77,16 @@ CYAN = (0, 255, 255)
 PINK = (255, 105, 180)
 GRAY = (128, 128, 128)
 """
+
+class PolicyNetwork(nn.Module):
+    def __init__(self, input_size=4, hidden_size=16, output_size=4):
+        super(PolicyNetwork, self).__init__()
+        self.fc1 = nn.Linear(input_size, hidden_size)
+        self.fc2 = nn.Linear(hidden_size, output_size)
+
+    def forward(self, x):
+        x = F.relu(self.fc1(x))
+        return self.fc2(x)  # Ausgabe = Scores für jede Richtung
 
 class Perzeptron:
     def __init__(self, n, log_collector):
@@ -164,6 +178,7 @@ class Brain:        # Hier werden Die daten als auch die Methoden für ML bereit
         self.alpha = 0.1
         self.gamma = 0.9
         self.eta = 0.1
+        self.optimizer = None
         self.data_file = self.set_file_path()
         self.ant_name = None
         self.log_collector = LogCollector(self.name, self.ant_strategy, self.ant_machine_learning)
@@ -193,6 +208,8 @@ class Brain:        # Hier werden Die daten als auch die Methoden für ML bereit
             return Q_LEARNING_FILE
         elif self.ant_machine_learning == "Perzeptron":
             return PERZEPTRON_FILE
+        elif self.ant_machine_learning == "Policy-Network":
+            pass
         else:
             logger.error(f"Brain-Lernverfahren: {self.ant_machine_learning} unbekannt/nicht gefunden.")
             return None
@@ -244,6 +261,11 @@ class Brain:        # Hier werden Die daten als auch die Methoden für ML bereit
                     q.append(p)
 
             return q
+        elif self.ant_machine_learning == "Policy-Network":
+            network = PolicyNetwork()
+            network.load_state_dict(torch.load('policy_network.pth'))
+            network.eval()      # In den Evaluierungsmodus versetzen
+            return network
 
     def save_brain_data(self, file=None):
         if file is None: file = self.data_file
@@ -262,12 +284,44 @@ class Brain:        # Hier werden Die daten als auch die Methoden für ML bereit
 
             df = pd.DataFrame(data, columns=["w0", "w1", "w2", "w3", "b"])
             DataStorage().save_data_to_csv_file(df, file)
+        elif self.ant_machine_learning == "Policy-Network":
+            # Speichern der Modellparameter:
+            torch.save(self._q.state_dict(), 'policy_network.pth')
         else:
             logger.info("Bei diesem Lernverfahren nicht möglich.")
 
     def set_brain(self, values):
             """Setzt die Q-Werte."""
             if values: self._q = values
+
+    def policy_network_calculate(self, state, action, reward):
+        self.log_collector.add_log_txt(f"------Policy Network Brain Berechnung--------\n")
+        self.log_collector.add_log_txt(f"Übergebene Werte:\n"
+                                       f"Status: {state}, Richtung: {action}, Belohnung: {reward}\n")
+        if self.optimizer is None: self.optimizer = optim.Adam(self._q.parameters(), lr=0.01)
+        # Zustand und Aktion als Tensor
+        state = torch.tensor(state, dtype=torch.float32).unsqueeze(0)  # [1, input_size]
+        action = torch.tensor([action], dtype=torch.int64)
+        reward = torch.tensor([reward], dtype=torch.float32)
+
+        # Vorwärtspass
+        logits = self._q(state)  # [1, output_size]
+        log_probs = torch.log_softmax(logits, dim=1)
+        selected_log_prob = log_probs[0, action]
+
+        # Policy-Gradient-Loss (negativer Erwartungswert)
+        loss = -selected_log_prob * reward
+
+        self.log_collector.add_log_txt(f"Policy Gradient Ansatz. Werte duch Torch Tensor angepasst:\n"
+                                       f"Status: {state}\nRichtung: {action}\nBelohnung: {reward}\n"
+                                       f"Vorwärtspass: Werte des NN: \n{logits}\n"
+                                       f"Softmax-Funktion(Warscheinlichkeiten): \n{log_probs}\n"
+                                       f"Log-Wahrscheinlichkeitswert: \n{selected_log_prob}\n"
+                                       f"Policy-Gradient-Loss(Belohnung): \n{loss}\n")
+        # Backpropagation
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
 
     def perzeptron_calculate(self, state, action, reward):
         brain_output = self.get_perzeptron_value(state)
@@ -361,6 +415,9 @@ class Brain:        # Hier werden Die daten als auch die Methoden für ML bereit
             output.append(self._q[i].berechne(state))
         return output
 
+    def get_policy_network(self):
+        return self._q
+
     def train_perzeptron(self, settings):
         learning_data = DataStorage.load_data_from_csv_file(settings["BATCH_FILE"])
         self.log_collector.add_log_txt(f"Starte Training mit {settings['BATCH_FILE']}\n")
@@ -370,9 +427,16 @@ class Brain:        # Hier werden Die daten als auch die Methoden für ML bereit
                 state = tuple([int(x) for x in row.state.split(":")])
                 self.log_collector.add_log_txt(f"Datensatz: {state}, Aktion: {row.action}, Belohnung: 10\n")
                 self.perzeptron_calculate(state, row.action, reward=10)
-        # self.log_collector.add_log_txt(f"Speichere Ergebnisse in: {settings['TARGET_FILE']}\n")
-        # self.save_brain_data(settings["TARGET_FILE"])
 
+    def train_policy_network(self):
+        print("Coming soon")
+        # memory = ReplayBuffer()  # speichert Erlebnisse
+        # # Interaktion
+        # memory.add(state, action, reward, next_state, done)
+        #
+        # # Training
+        # batch = memory.sample(batch_size)
+        # loss = train_on_batch(batch)  # mit deinem NN-Modell
 
 class Ant:
     """
@@ -491,6 +555,8 @@ class Ant:
             self.move_brain_q_learning()
         elif self.brain.ant_strategy == "brain" and self.brain.ant_machine_learning == "Perzeptron":
             self.move_perzeptron()
+        elif self.brain.ant_strategy == "brain" and self.brain.ant_machine_learning == "Policy-Network":
+            self.move_policy_network()
         elif self.brain.ant_strategy == "self":
             pass
         else:
@@ -532,6 +598,64 @@ class Ant:
         self.world.world_pause = False
         self.world.step = True                  # Schrittweise bewegung
 
+    def move_policy_network(self):
+        state = self.calculate_state()  # Aktueller Status
+
+        self.log_collector.add_log_txt(
+            f"Position: X: {self.pos_x}, Y: {self.pos_y}, Energie: {self.orka}, Futtergefunden: {self.food_found}\n"
+            f"------------------------------------------------------------------------------------------\n"
+            f"Geruchswahrnehmung Position: {self.odor}\nBerechneter Status:\n"
+            f"Oben: {state[0]:+d}      Unten: {state[1]:+d}       Links: {state[2]:+d}       Rechts: {state[3]:+d}\n")
+        if random.random() < self.brain.eta:  # eps Exploration: zufällige Richtung wählen
+            action = random.choice(self.directions)  # self.direction = ['up', 'down', 'left', 'right']
+            self.log_collector.add_log_txt(
+                f"Ereignis Zufällig gehen eingetrofen\n"
+                f"Bisher die Besten aktionen: {self.directions}, Neue Richtungswahl: {action}\n")
+        else:
+            policy_network = self.brain.get_policy_network()
+            brain_output = policy_network(torch.tensor(state, dtype=torch.float32)) # state = torch.tensor([0.1, 0.0, 0.3, -0.2])
+            action = self.directions[torch.argmax(brain_output).item()]
+            # self.log_collector.add_log_txt(
+            #     f"Policy Network Ausgabe: {brain_output}, Bestimmte Aktion: {action}\n")
+            # self.brain.output_error = self.calculate_error(brain_output) # in %
+            best_directions = []
+            best_directions.append(action)
+            # for i, o in enumerate(brain_output):
+            #     if o > 0:
+            #         best_directions.append(self.directions[i])
+            if best_directions:
+                action = random.choice(best_directions)                 # Richtung Höchster wert merken
+                if self.opposites.get(action) == self.last_direction:   # zurück gehen verboten
+                    directions = self.directions.copy()                 # Richtungen kopieren
+                    del directions[directions.index(action)]            # Zurück löschen
+                    action = random.choice(directions)                  # Richtung Zufällig ohne Zurück
+                    self.log_collector.add_log_txt(
+                        f"Ereignis Zurück gehen eingetrofen\n"
+                        f"Vorhergehende Richtungswahl: {self.last_direction}\n"
+                        f"Zurück gehen nicht erlaubt. Neue Richtungswahl: {action}\n")
+            else:
+                action = random.choice(self.directions)
+            self.log_collector.add_log_txt(
+                f"Policy Network Ausgabe: \n{brain_output}\n" # , Fehlerrate: {self.brain.output_error}%
+                f"Berechnete Richtungen: {best_directions} Gewählte Richtung: {action}\n"
+                f"Vorhergehende Richtungswahl: {self.last_direction} \n")
+
+        self.move_direction(action)                                 # Bewegung ausführen
+        self.last_direction = action
+
+        self.odor = self.world.get_odor(self.pos_x, self.pos_y)     # Neuen Geruch holen
+        reward = -0.0001
+        for food in self.world.foods:                               # Futter gefunden
+            if food.get_position() == self.get_position():
+                reward = 20
+                self.log_collector.add_log_txt(f" --- !!!Essen gefunden!!! --- \n"
+                                               f"Belohnung: {reward}\n")
+        action_idx = self.directions.index(action)
+        self.brain.policy_network_calculate(state, action_idx, reward)
+        self.log_collector.add_log_txt(f" --- !!!Bewegung!!! --- \n"
+                                       f"Neuer Positionsgeruch:{self.odor}\n")
+
+        self.log_collector.add_new_period()
 
     def move_perzeptron(self):
         state = self.calculate_state()  # Aktueller Status

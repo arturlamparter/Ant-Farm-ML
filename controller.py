@@ -144,7 +144,7 @@ class TkSettingsController:                                             # HauptC
         self.world = model.World()                                      # Enthält alle Weltobjekte (Matrix)
         self.tk_settings_window = settings_window                                          # Tk Settings
         self.py_game_controller = PyGameController(self, self.world)
-        self.machine_learning_methods = ["Monte-Carlo", "Q-Learning", "Perzeptron"]
+        self.machine_learning_methods = ["Monte-Carlo", "Q-Learning", "Perzeptron", "Policy-Network"]
         self.ant_strategy = model.ANT_STRATEGY  # Unterschiedliche Food suche Strategien ["random" ,"odor", "brain"]
         self.ant_machine_learning = model.ANT_MACHINE_LEARNING  # Bestimte brain Methode
         self.cmb_ant_selected = "000"

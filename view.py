@@ -196,18 +196,18 @@ class TkSettingsWindow(tk.Tk):
         self.chk_btn_csv.grid(row=9, column=1)
 
         self.cmb_ant_machine_learning = ttk.Combobox(self, width=12)  # Ermöglicht die Auswahl der Machine Learning Methode
-        self.cmb_ant_machine_learning.grid(row=9, column=2, columnspan=1, padx=5)
+        self.cmb_ant_machine_learning.grid(row=9, column=2, columnspan=2, padx=5)
         self.cmb_ant_machine_learning.bind("<<ComboboxSelected>>", lambda event: self.ant_machine_learning_set())
 
         self.cmb_selected_ant = ttk.Combobox(self, width=12)  # Ermöglicht die Auswahl der jeweiligen Ameise
-        self.cmb_selected_ant.grid(row=9, column=4, columnspan=1, padx=5)
+        self.cmb_selected_ant.grid(row=9, column=5, columnspan=1, padx=5)
         self.cmb_selected_ant.bind("<<ComboboxSelected>>", lambda event: self.selected_ant_set())
 
         # --- CSV Info / Platzhaltertext ---
         self.lbl_set_brain = tk.Label(self, font=("Arial", 14))
         self.lbl_set_brain.grid(row=10, column=0, padx=5)           # Gewählte Strategieart
 
-        self.lbl_machine_learning = tk.Label(self, font=("Arial", 14))
+        self.lbl_machine_learning = tk.Label(self, font=("Arial", 12))
         self.lbl_machine_learning.grid(row=11, column=0, padx=5)    # Gewählte Machine Learning
 
         tk.Label(self, text=f"", font=("Arial", 14)).grid(row=12, column=0, padx=5) # Zuckünftige Anwendung
